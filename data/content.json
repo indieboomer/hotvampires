@@ -1,0 +1,23 @@
+[
+ {"id":"needle","name":"Needle","category":"weapon","price":35,"max_level":3,"tags":["projectile"],"description":"Fast automatic projectile. Each level adds 35% base damage."},
+ {"id":"pulse","name":"Pulse","category":"weapon","price":40,"max_level":3,"tags":["area"],"description":"Automatic close-range burst; cover blocks enemy damage. +35% damage per level."},
+ {"id":"satellite","name":"Satellite","category":"weapon","price":40,"max_level":3,"tags":["orbital"],"description":"Orbiting construct deals contact damage. +35% damage per level."},
+ {"id":"piercing","name":"Piercing","category":"skill","price":35,"max_level":3,"tags":["projectile"],"description":"Needle penetrates one additional enemy per level; cover still stops it."},
+ {"id":"echo","name":"Echo","category":"skill","price":40,"max_level":3,"tags":["all"],"description":"Every fifth primary activation repeats at 30/45/60% damage. Secondary hits do not repeat."},
+ {"id":"rupture","name":"Rupture","category":"skill","price":40,"max_level":3,"tags":["all"],"description":"Primary kills explode for 5 damage per level in a 1.8-unit visible radius. No recursive procs."},
+ {"id":"chain","name":"Chain","category":"skill","price":40,"max_level":3,"tags":["all"],"description":"Primary hits jump to a nearby visible enemy for 3 damage per level. No recursive procs."},
+ {"id":"inertia","name":"Inertia","category":"skill","price":30,"max_level":3,"tags":["all"],"description":"Stand for 0.75 world seconds to charge +40% damage per level on the next moving attack. One charge."},
+ {"id":"momentum","name":"Momentum","category":"skill","price":30,"max_level":3,"tags":["all"],"description":"After 2 moving world seconds gain +15% attack speed per level; fades over 1 world second."},
+ {"id":"lens","name":"Lens","category":"item","price":20,"max_level":5,"tags":["range"],"description":"+15% additive range, -5 maximum HP per copy."},
+ {"id":"capacitor","name":"Capacitor","category":"item","price":25,"max_level":5,"tags":["damage"],"description":"+25% additive damage, -10% additive attack speed per copy."},
+ {"id":"light_frame","name":"Light Frame","category":"item","price":20,"max_level":5,"tags":["mobility"],"description":"+12% additive move speed, -1 armor per copy."},
+ {"id":"armor_plate","name":"Armor Plate","category":"item","price":20,"max_level":5,"tags":["defense"],"description":"+2 armor, -5% additive move speed per copy."},
+ {"id":"magnet","name":"Magnet","category":"item","price":20,"max_level":5,"tags":["economy"],"description":"+0.7 pickup radius per copy."},
+ {"id":"core","name":"Core","category":"item","price":25,"max_level":5,"tags":["defense"],"description":"+15 maximum HP per copy. Does not heal."},
+ {"id":"stabilizer","name":"Stabilizer","category":"item","price":25,"max_level":5,"tags":["speed"],"description":"+15% additive attack speed per copy."},
+ {"id":"shard","name":"Shard","category":"item","price":20,"max_level":5,"tags":["critical"],"description":"+8 percentage points critical chance per copy; capped at 75%."},
+ {"id":"amplifier","name":"Amplifier","category":"item","price":25,"max_level":5,"tags":["critical"],"description":"+0.3 critical multiplier per copy."},
+ {"id":"ring","name":"Ring","category":"item","price":20,"max_level":5,"tags":["area"],"description":"+15% additive effect radius per copy."},
+ {"id":"regenerator","name":"Regenerator","category":"item","price":30,"max_level":5,"tags":["defense"],"description":"Regenerate 0.3 HP per world second per copy."},
+ {"id":"coupon","name":"Coupon","category":"item","price":20,"max_level":5,"tags":["economy"],"description":"Rerolls cost 2 less per copy; minimum price 1."}
+]

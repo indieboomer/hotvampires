@@ -1,0 +1,7 @@
+/target/
+/saves/
+/captures/
+*.tmp
+/reports/**/*.jsonl
+!/reports/verified/mobile-11.jsonl
+
