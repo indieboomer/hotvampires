@@ -1,0 +1,9 @@
+{
+  "confidence": "high",
+  "experimental": true,
+  "finding": "Standing does not produce extreme slowdown",
+  "passed": false,
+  "proposed_experiment": "Restore minimum time scale to 0.03 and repeat identical clock probe",
+  "scenario": "10-real-seconds-standing",
+  "world_seconds": 9.999933242797852
+}

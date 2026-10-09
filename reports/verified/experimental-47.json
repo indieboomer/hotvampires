@@ -1,0 +1,106 @@
+{
+  "build_id": "725ccd3d4addaae2",
+  "data_hash": "ce8d62e861c0cf03",
+  "seed": 47,
+  "policy": "experimental",
+  "policy_version": "directions-v1/0.15s",
+  "outcome": "victory",
+  "virtual_seconds": 280.17572,
+  "world_seconds": 279.9537,
+  "wave": 8,
+  "hp": 98.40679,
+  "currency": 596,
+  "metrics": {
+    "kills": 309,
+    "earned": 1545,
+    "spent": 949,
+    "purchases": 33,
+    "rerolls": 5,
+    "heals": 1,
+    "dealt": 11687.334,
+    "received": 44.100002,
+    "cover_removed": 780,
+    "debris_peak": 324,
+    "standing": 0.0,
+    "overloads": 0,
+    "snapshots": [
+      {
+        "currency": 120,
+        "hp": 58.0,
+        "kills": 24,
+        "real": 35.082969665527344,
+        "wave": 1,
+        "world": 35.00023651123047
+      },
+      {
+        "currency": 140,
+        "hp": 58.0,
+        "kills": 52,
+        "real": 70.10049438476562,
+        "wave": 2,
+        "world": 70.00496673583984
+      },
+      {
+        "currency": 160,
+        "hp": 37.0,
+        "kills": 81,
+        "real": 105.12464141845703,
+        "wave": 3,
+        "world": 104.99642181396484
+      },
+      {
+        "currency": 195,
+        "hp": 62.0,
+        "kills": 117,
+        "real": 140.1432342529297,
+        "wave": 4,
+        "world": 139.98788452148438
+      },
+      {
+        "currency": 235,
+        "hp": 64.79782104492188,
+        "kills": 161,
+        "real": 175.15135192871094,
+        "wave": 5,
+        "world": 174.97933959960938
+      },
+      {
+        "currency": 350,
+        "hp": 75.30807495117188,
+        "kills": 209,
+        "real": 210.1594696044922,
+        "wave": 6,
+        "world": 209.97079467773438
+      },
+      {
+        "currency": 462,
+        "hp": 77.41832733154297,
+        "kills": 259,
+        "real": 245.16758728027344,
+        "wave": 7,
+        "world": 244.96224975585938
+      },
+      {
+        "currency": 596,
+        "hp": 98.40679168701172,
+        "kills": 309,
+        "real": 280.17572021484375,
+        "wave": 8,
+        "world": 279.9537048339844
+      }
+    ]
+  },
+  "elapsed_ms": 817.9344,
+  "config": {
+    "min_scale": 0.03,
+    "transition_seconds": 0.08,
+    "wave_seconds": 35.0,
+    "waves": 8,
+    "spawn_seconds": 1.15,
+    "enemy_hp": 16.0,
+    "contact_damage": 7.0,
+    "debris_budget": 2000
+  },
+  "platform": "windows-x86_64",
+  "privileged": false
+}

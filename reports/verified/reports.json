@@ -1,0 +1,956 @@
+[
+  {
+    "build_id": "725ccd3d4addaae2",
+    "data_hash": "ce8d62e861c0cf03",
+    "seed": 11,
+    "policy": "mobile",
+    "policy_version": "directions-v1/0.15s",
+    "outcome": "victory",
+    "virtual_seconds": 280.17572,
+    "world_seconds": 279.9537,
+    "wave": 8,
+    "hp": 69.90921,
+    "currency": 528,
+    "metrics": {
+      "kills": 280,
+      "earned": 1400,
+      "spent": 872,
+      "purchases": 32,
+      "rerolls": 5,
+      "heals": 0,
+      "dealt": 9827.522,
+      "received": 16.1,
+      "cover_removed": 739,
+      "debris_peak": 356,
+      "standing": 0.0,
+      "overloads": 0,
+      "snapshots": [
+        {
+          "currency": 105,
+          "hp": 65.0,
+          "kills": 21,
+          "real": 35.082969665527344,
+          "wave": 1,
+          "world": 35.00023651123047
+        },
+        {
+          "currency": 140,
+          "hp": 65.0,
+          "kills": 48,
+          "real": 70.10049438476562,
+          "wave": 2,
+          "world": 70.00496673583984
+        },
+        {
+          "currency": 175,
+          "hp": 65.0,
+          "kills": 79,
+          "real": 105.12464141845703,
+          "wave": 3,
+          "world": 104.99642181396484
+        },
+        {
+          "currency": 235,
+          "hp": 56.599998474121094,
+          "kills": 113,
+          "real": 140.1432342529297,
+          "wave": 4,
+          "world": 139.98788452148438
+        },
+        {
+          "currency": 282,
+          "hp": 56.599998474121094,
+          "kills": 148,
+          "real": 175.15135192871094,
+          "wave": 5,
+          "world": 174.97933959960938
+        },
+        {
+          "currency": 349,
+          "hp": 56.599998474121094,
+          "kills": 188,
+          "real": 210.1594696044922,
+          "wave": 6,
+          "world": 209.97079467773438
+        },
+        {
+          "currency": 436,
+          "hp": 67.09895324707031,
+          "kills": 229,
+          "real": 245.16758728027344,
+          "wave": 7,
+          "world": 244.96224975585938
+        },
+        {
+          "currency": 528,
+          "hp": 69.90921020507812,
+          "kills": 280,
+          "real": 280.17572021484375,
+          "wave": 8,
+          "world": 279.9537048339844
+        }
+      ]
+    },
+    "elapsed_ms": 751.5988,
+    "config": {
+      "min_scale": 0.03,
+      "transition_seconds": 0.08,
+      "wave_seconds": 35.0,
+      "waves": 8,
+      "spawn_seconds": 1.15,
+      "enemy_hp": 16.0,
+      "contact_damage": 7.0,
+      "debris_budget": 2000
+    },
+    "platform": "windows-x86_64",
+    "privileged": false
+  },
+  {
+    "build_id": "725ccd3d4addaae2",
+    "data_hash": "ce8d62e861c0cf03",
+    "seed": 29,
+    "policy": "mobile",
+    "policy_version": "directions-v1/0.15s",
+    "outcome": "victory",
+    "virtual_seconds": 280.17572,
+    "world_seconds": 279.9537,
+    "wave": 8,
+    "hp": 68.98453,
+    "currency": 680,
+    "metrics": {
+      "kills": 320,
+      "earned": 1600,
+      "spent": 920,
+      "purchases": 31,
+      "rerolls": 6,
+      "heals": 0,
+      "dealt": 12052.147,
+      "received": 28.0,
+      "cover_removed": 943,
+      "debris_peak": 388,
+      "standing": 0.0,
+      "overloads": 0,
+      "snapshots": [
+        {
+          "currency": 100,
+          "hp": 65.0,
+          "kills": 20,
+          "real": 35.082969665527344,
+          "wave": 1,
+          "world": 35.00023651123047
+        },
+        {
+          "currency": 150,
+          "hp": 60.0,
+          "kills": 50,
+          "real": 70.10049438476562,
+          "wave": 2,
+          "world": 70.00496673583984
+        },
+        {
+          "currency": 185,
+          "hp": 48.0,
+          "kills": 86,
+          "real": 105.12464141845703,
+          "wave": 3,
+          "world": 104.99642181396484
+        },
+        {
+          "currency": 220,
+          "hp": 34.0,
+          "kills": 126,
+          "real": 140.1432342529297,
+          "wave": 4,
+          "world": 139.98788452148438
+        },
+        {
+          "currency": 285,
+          "hp": 44.494232177734375,
+          "kills": 168,
+          "real": 175.15135192871094,
+          "wave": 5,
+          "world": 174.97933959960938
+        },
+        {
+          "currency": 380,
+          "hp": 47.98846435546875,
+          "kills": 215,
+          "real": 210.1594696044922,
+          "wave": 6,
+          "world": 209.97079467773438
+        },
+        {
+          "currency": 505,
+          "hp": 58.482696533203125,
+          "kills": 266,
+          "real": 245.16758728027344,
+          "wave": 7,
+          "world": 244.96224975585938
+        },
+        {
+          "currency": 680,
+          "hp": 68.98452758789062,
+          "kills": 320,
+          "real": 280.17572021484375,
+          "wave": 8,
+          "world": 279.9537048339844
+        }
+      ]
+    },
+    "elapsed_ms": 920.3302,
+    "config": {
+      "min_scale": 0.03,
+      "transition_seconds": 0.08,
+      "wave_seconds": 35.0,
+      "waves": 8,
+      "spawn_seconds": 1.15,
+      "enemy_hp": 16.0,
+      "contact_damage": 7.0,
+      "debris_budget": 2000
+    },
+    "platform": "windows-x86_64",
+    "privileged": false
+  },
+  {
+    "build_id": "725ccd3d4addaae2",
+    "data_hash": "ce8d62e861c0cf03",
+    "seed": 47,
+    "policy": "mobile",
+    "policy_version": "directions-v1/0.15s",
+    "outcome": "victory",
+    "virtual_seconds": 280.17572,
+    "world_seconds": 279.9537,
+    "wave": 8,
+    "hp": 85.0,
+    "currency": 671,
+    "metrics": {
+      "kills": 314,
+      "earned": 1570,
+      "spent": 899,
+      "purchases": 32,
+      "rerolls": 5,
+      "heals": 0,
+      "dealt": 10095.062,
+      "received": 14.700001,
+      "cover_removed": 1020,
+      "debris_peak": 348,
+      "standing": 0.0,
+      "overloads": 0,
+      "snapshots": [
+        {
+          "currency": 105,
+          "hp": 65.0,
+          "kills": 21,
+          "real": 35.082969665527344,
+          "wave": 1,
+          "world": 35.00023651123047
+        },
+        {
+          "currency": 140,
+          "hp": 65.0,
+          "kills": 47,
+          "real": 70.10049438476562,
+          "wave": 2,
+          "world": 70.00496673583984
+        },
+        {
+          "currency": 190,
+          "hp": 58.0,
+          "kills": 80,
+          "real": 105.12464141845703,
+          "wave": 3,
+          "world": 104.99642181396484
+        },
+        {
+          "currency": 255,
+          "hp": 50.29999923706055,
+          "kills": 119,
+          "real": 140.1432342529297,
+          "wave": 4,
+          "world": 139.98788452148438
+        },
+        {
+          "currency": 275,
+          "hp": 60.79423141479492,
+          "kills": 159,
+          "real": 175.15135192871094,
+          "wave": 5,
+          "world": 174.97933959960938
+        },
+        {
+          "currency": 385,
+          "hp": 71.29959106445312,
+          "kills": 206,
+          "real": 210.1594696044922,
+          "wave": 6,
+          "world": 209.97079467773438
+        },
+        {
+          "currency": 502,
+          "hp": 81.80984497070312,
+          "kills": 256,
+          "real": 245.16758728027344,
+          "wave": 7,
+          "world": 244.96224975585938
+        },
+        {
+          "currency": 671,
+          "hp": 85.0,
+          "kills": 314,
+          "real": 280.17572021484375,
+          "wave": 8,
+          "world": 279.9537048339844
+        }
+      ]
+    },
+    "elapsed_ms": 786.1992,
+    "config": {
+      "min_scale": 0.03,
+      "transition_seconds": 0.08,
+      "wave_seconds": 35.0,
+      "waves": 8,
+      "spawn_seconds": 1.15,
+      "enemy_hp": 16.0,
+      "contact_damage": 7.0,
+      "debris_budget": 2000
+    },
+    "platform": "windows-x86_64",
+    "privileged": false
+  },
+  {
+    "build_id": "725ccd3d4addaae2",
+    "data_hash": "ce8d62e861c0cf03",
+    "seed": 11,
+    "policy": "cautious",
+    "policy_version": "directions-v1/0.15s",
+    "outcome": "victory",
+    "virtual_seconds": 351.65826,
+    "world_seconds": 279.9537,
+    "wave": 8,
+    "hp": 55.0,
+    "currency": 467,
+    "metrics": {
+      "kills": 288,
+      "earned": 1440,
+      "spent": 973,
+      "purchases": 34,
+      "rerolls": 6,
+      "heals": 0,
+      "dealt": 9186.963,
+      "received": 21.0,
+      "cover_removed": 1020,
+      "debris_peak": 360,
+      "standing": 73.801285,
+      "overloads": 0,
+      "snapshots": [
+        {
+          "currency": 100,
+          "hp": 65.0,
+          "kills": 20,
+          "real": 43.51617431640625,
+          "wave": 1,
+          "world": 35.00023651123047
+        },
+        {
+          "currency": 155,
+          "hp": 65.0,
+          "kills": 51,
+          "real": 87.68758392333984,
+          "wave": 2,
+          "world": 70.00496673583984
+        },
+        {
+          "currency": 150,
+          "hp": 65.0,
+          "kills": 79,
+          "real": 130.8455047607422,
+          "wave": 3,
+          "world": 104.99642181396484
+        },
+        {
+          "currency": 170,
+          "hp": 65.0,
+          "kills": 113,
+          "real": 177.3341522216797,
+          "wave": 4,
+          "world": 139.98788452148438
+        },
+        {
+          "currency": 220,
+          "hp": 60.0,
+          "kills": 155,
+          "real": 221.1901092529297,
+          "wave": 5,
+          "world": 174.97933959960938
+        },
+        {
+          "currency": 275,
+          "hp": 60.0,
+          "kills": 195,
+          "real": 263.47979736328125,
+          "wave": 6,
+          "world": 209.97079467773438
+        },
+        {
+          "currency": 380,
+          "hp": 55.0,
+          "kills": 242,
+          "real": 309.38525390625,
+          "wave": 7,
+          "world": 244.96224975585938
+        },
+        {
+          "currency": 467,
+          "hp": 55.0,
+          "kills": 288,
+          "real": 351.65826416015625,
+          "wave": 8,
+          "world": 279.9537048339844
+        }
+      ]
+    },
+    "elapsed_ms": 882.5083999999999,
+    "config": {
+      "min_scale": 0.03,
+      "transition_seconds": 0.08,
+      "wave_seconds": 35.0,
+      "waves": 8,
+      "spawn_seconds": 1.15,
+      "enemy_hp": 16.0,
+      "contact_damage": 7.0,
+      "debris_budget": 2000
+    },
+    "platform": "windows-x86_64",
+    "privileged": false
+  },
+  {
+    "build_id": "725ccd3d4addaae2",
+    "data_hash": "ce8d62e861c0cf03",
+    "seed": 29,
+    "policy": "cautious",
+    "policy_version": "directions-v1/0.15s",
+    "outcome": "victory",
+    "virtual_seconds": 358.3733,
+    "world_seconds": 279.9537,
+    "wave": 8,
+    "hp": 71.81293,
+    "currency": 660,
+    "metrics": {
+      "kills": 311,
+      "earned": 1555,
+      "spent": 895,
+      "purchases": 30,
+      "rerolls": 6,
+      "heals": 0,
+      "dealt": 11401.129,
+      "received": 14.700001,
+      "cover_removed": 1020,
+      "debris_peak": 320,
+      "standing": 80.70276,
+      "overloads": 0,
+      "snapshots": [
+        {
+          "currency": 90,
+          "hp": 65.0,
+          "kills": 18,
+          "real": 44.0994987487793,
+          "wave": 1,
+          "world": 35.00023651123047
+        },
+        {
+          "currency": 155,
+          "hp": 60.0,
+          "kills": 46,
+          "real": 87.25415802001953,
+          "wave": 2,
+          "world": 70.00496673583984
+        },
+        {
+          "currency": 205,
+          "hp": 55.0,
+          "kills": 85,
+          "real": 133.9114227294922,
+          "wave": 3,
+          "world": 104.99642181396484
+        },
+        {
+          "currency": 245,
+          "hp": 55.0,
+          "kills": 126,
+          "real": 177.9340057373047,
+          "wave": 4,
+          "world": 139.98788452148438
+        },
+        {
+          "currency": 300,
+          "hp": 55.0,
+          "kills": 166,
+          "real": 222.8230438232422,
+          "wave": 5,
+          "world": 174.97933959960938
+        },
+        {
+          "currency": 395,
+          "hp": 65.49651336669922,
+          "kills": 213,
+          "real": 269.12841796875,
+          "wave": 6,
+          "world": 209.97079467773438
+        },
+        {
+          "currency": 485,
+          "hp": 69.00347900390625,
+          "kills": 257,
+          "real": 314.783935546875,
+          "wave": 7,
+          "world": 244.96224975585938
+        },
+        {
+          "currency": 660,
+          "hp": 71.81292724609375,
+          "kills": 311,
+          "real": 358.373291015625,
+          "wave": 8,
+          "world": 279.9537048339844
+        }
+      ]
+    },
+    "elapsed_ms": 917.6539,
+    "config": {
+      "min_scale": 0.03,
+      "transition_seconds": 0.08,
+      "wave_seconds": 35.0,
+      "waves": 8,
+      "spawn_seconds": 1.15,
+      "enemy_hp": 16.0,
+      "contact_damage": 7.0,
+      "debris_budget": 2000
+    },
+    "platform": "windows-x86_64",
+    "privileged": false
+  },
+  {
+    "build_id": "725ccd3d4addaae2",
+    "data_hash": "ce8d62e861c0cf03",
+    "seed": 47,
+    "policy": "cautious",
+    "policy_version": "directions-v1/0.15s",
+    "outcome": "victory",
+    "virtual_seconds": 354.87415,
+    "world_seconds": 279.9537,
+    "wave": 8,
+    "hp": 53.087833,
+    "currency": 631,
+    "metrics": {
+      "kills": 313,
+      "earned": 1565,
+      "spent": 934,
+      "purchases": 33,
+      "rerolls": 5,
+      "heals": 0,
+      "dealt": 11614.585,
+      "received": 64.4,
+      "cover_removed": 876,
+      "debris_peak": 412,
+      "standing": 77.10199,
+      "overloads": 0,
+      "snapshots": [
+        {
+          "currency": 130,
+          "hp": 65.0,
+          "kills": 26,
+          "real": 45.98280334472656,
+          "wave": 1,
+          "world": 35.00023651123047
+        },
+        {
+          "currency": 145,
+          "hp": 65.0,
+          "kills": 53,
+          "real": 89.43795776367188,
+          "wave": 2,
+          "world": 70.00496673583984
+        },
+        {
+          "currency": 180,
+          "hp": 51.0,
+          "kills": 85,
+          "real": 131.72862243652344,
+          "wave": 3,
+          "world": 104.99642181396484
+        },
+        {
+          "currency": 225,
+          "hp": 51.0,
+          "kills": 120,
+          "real": 175.31797790527344,
+          "wave": 4,
+          "world": 139.98788452148438
+        },
+        {
+          "currency": 260,
+          "hp": 61.494232177734375,
+          "kills": 163,
+          "real": 219.9237518310547,
+          "wave": 5,
+          "world": 174.97933959960938
+        },
+        {
+          "currency": 380,
+          "hp": 56.588462829589844,
+          "kills": 212,
+          "real": 266.41241455078125,
+          "wave": 6,
+          "world": 209.97079467773438
+        },
+        {
+          "currency": 487,
+          "hp": 50.28334426879883,
+          "kills": 261,
+          "real": 310.71826171875,
+          "wave": 7,
+          "world": 244.96224975585938
+        },
+        {
+          "currency": 631,
+          "hp": 53.087833404541016,
+          "kills": 313,
+          "real": 354.8741455078125,
+          "wave": 8,
+          "world": 279.9537048339844
+        }
+      ]
+    },
+    "elapsed_ms": 878.6737999999999,
+    "config": {
+      "min_scale": 0.03,
+      "transition_seconds": 0.08,
+      "wave_seconds": 35.0,
+      "waves": 8,
+      "spawn_seconds": 1.15,
+      "enemy_hp": 16.0,
+      "contact_damage": 7.0,
+      "debris_budget": 2000
+    },
+    "platform": "windows-x86_64",
+    "privileged": false
+  },
+  {
+    "build_id": "725ccd3d4addaae2",
+    "data_hash": "ce8d62e861c0cf03",
+    "seed": 11,
+    "policy": "experimental",
+    "policy_version": "directions-v1/0.15s",
+    "outcome": "victory",
+    "virtual_seconds": 280.17572,
+    "world_seconds": 279.9537,
+    "wave": 8,
+    "hp": 57.29423,
+    "currency": 692,
+    "metrics": {
+      "kills": 315,
+      "earned": 1575,
+      "spent": 883,
+      "purchases": 32,
+      "rerolls": 6,
+      "heals": 0,
+      "dealt": 11703.485,
+      "received": 18.2,
+      "cover_removed": 936,
+      "debris_peak": 452,
+      "standing": 0.0,
+      "overloads": 0,
+      "snapshots": [
+        {
+          "currency": 130,
+          "hp": 65.0,
+          "kills": 26,
+          "real": 35.082969665527344,
+          "wave": 1,
+          "world": 35.00023651123047
+        },
+        {
+          "currency": 150,
+          "hp": 65.0,
+          "kills": 55,
+          "real": 70.10049438476562,
+          "wave": 2,
+          "world": 70.00496673583984
+        },
+        {
+          "currency": 195,
+          "hp": 65.0,
+          "kills": 89,
+          "real": 105.12464141845703,
+          "wave": 3,
+          "world": 104.99642181396484
+        },
+        {
+          "currency": 247,
+          "hp": 65.0,
+          "kills": 125,
+          "real": 140.1432342529297,
+          "wave": 4,
+          "world": 139.98788452148438
+        },
+        {
+          "currency": 279,
+          "hp": 56.599998474121094,
+          "kills": 166,
+          "real": 175.15135192871094,
+          "wave": 5,
+          "world": 174.97933959960938
+        },
+        {
+          "currency": 411,
+          "hp": 56.599998474121094,
+          "kills": 206,
+          "real": 210.1594696044922,
+          "wave": 6,
+          "world": 209.97079467773438
+        },
+        {
+          "currency": 538,
+          "hp": 46.79999923706055,
+          "kills": 258,
+          "real": 245.16758728027344,
+          "wave": 7,
+          "world": 244.96224975585938
+        },
+        {
+          "currency": 692,
+          "hp": 57.29423141479492,
+          "kills": 315,
+          "real": 280.17572021484375,
+          "wave": 8,
+          "world": 279.9537048339844
+        }
+      ]
+    },
+    "elapsed_ms": 700.0714,
+    "config": {
+      "min_scale": 0.03,
+      "transition_seconds": 0.08,
+      "wave_seconds": 35.0,
+      "waves": 8,
+      "spawn_seconds": 1.15,
+      "enemy_hp": 16.0,
+      "contact_damage": 7.0,
+      "debris_budget": 2000
+    },
+    "platform": "windows-x86_64",
+    "privileged": false
+  },
+  {
+    "build_id": "725ccd3d4addaae2",
+    "data_hash": "ce8d62e861c0cf03",
+    "seed": 29,
+    "policy": "experimental",
+    "policy_version": "directions-v1/0.15s",
+    "outcome": "victory",
+    "virtual_seconds": 280.17572,
+    "world_seconds": 279.9537,
+    "wave": 8,
+    "hp": 75.79386,
+    "currency": 720,
+    "metrics": {
+      "kills": 328,
+      "earned": 1640,
+      "spent": 920,
+      "purchases": 31,
+      "rerolls": 6,
+      "heals": 0,
+      "dealt": 12224.364,
+      "received": 21.0,
+      "cover_removed": 768,
+      "debris_peak": 360,
+      "standing": 0.0,
+      "overloads": 0,
+      "snapshots": [
+        {
+          "currency": 115,
+          "hp": 65.0,
+          "kills": 23,
+          "real": 35.082969665527344,
+          "wave": 1,
+          "world": 35.00023651123047
+        },
+        {
+          "currency": 155,
+          "hp": 60.0,
+          "kills": 51,
+          "real": 70.10049438476562,
+          "wave": 2,
+          "world": 70.00496673583984
+        },
+        {
+          "currency": 200,
+          "hp": 55.0,
+          "kills": 89,
+          "real": 105.12464141845703,
+          "wave": 3,
+          "world": 104.99642181396484
+        },
+        {
+          "currency": 230,
+          "hp": 48.0,
+          "kills": 128,
+          "real": 140.1432342529297,
+          "wave": 4,
+          "world": 139.98788452148438
+        },
+        {
+          "currency": 305,
+          "hp": 44.293190002441406,
+          "kills": 172,
+          "real": 175.15135192871094,
+          "wave": 5,
+          "world": 174.97933959960938
+        },
+        {
+          "currency": 405,
+          "hp": 54.78742218017578,
+          "kills": 220,
+          "real": 210.1594696044922,
+          "wave": 6,
+          "world": 209.97079467773438
+        },
+        {
+          "currency": 530,
+          "hp": 65.28360748291016,
+          "kills": 271,
+          "real": 245.16758728027344,
+          "wave": 7,
+          "world": 244.96224975585938
+        },
+        {
+          "currency": 720,
+          "hp": 75.79386138916016,
+          "kills": 328,
+          "real": 280.17572021484375,
+          "wave": 8,
+          "world": 279.9537048339844
+        }
+      ]
+    },
+    "elapsed_ms": 919.614,
+    "config": {
+      "min_scale": 0.03,
+      "transition_seconds": 0.08,
+      "wave_seconds": 35.0,
+      "waves": 8,
+      "spawn_seconds": 1.15,
+      "enemy_hp": 16.0,
+      "contact_damage": 7.0,
+      "debris_budget": 2000
+    },
+    "platform": "windows-x86_64",
+    "privileged": false
+  },
+  {
+    "build_id": "725ccd3d4addaae2",
+    "data_hash": "ce8d62e861c0cf03",
+    "seed": 47,
+    "policy": "experimental",
+    "policy_version": "directions-v1/0.15s",
+    "outcome": "victory",
+    "virtual_seconds": 280.17572,
+    "world_seconds": 279.9537,
+    "wave": 8,
+    "hp": 98.40679,
+    "currency": 596,
+    "metrics": {
+      "kills": 309,
+      "earned": 1545,
+      "spent": 949,
+      "purchases": 33,
+      "rerolls": 5,
+      "heals": 1,
+      "dealt": 11687.334,
+      "received": 44.100002,
+      "cover_removed": 780,
+      "debris_peak": 324,
+      "standing": 0.0,
+      "overloads": 0,
+      "snapshots": [
+        {
+          "currency": 120,
+          "hp": 58.0,
+          "kills": 24,
+          "real": 35.082969665527344,
+          "wave": 1,
+          "world": 35.00023651123047
+        },
+        {
+          "currency": 140,
+          "hp": 58.0,
+          "kills": 52,
+          "real": 70.10049438476562,
+          "wave": 2,
+          "world": 70.00496673583984
+        },
+        {
+          "currency": 160,
+          "hp": 37.0,
+          "kills": 81,
+          "real": 105.12464141845703,
+          "wave": 3,
+          "world": 104.99642181396484
+        },
+        {
+          "currency": 195,
+          "hp": 62.0,
+          "kills": 117,
+          "real": 140.1432342529297,
+          "wave": 4,
+          "world": 139.98788452148438
+        },
+        {
+          "currency": 235,
+          "hp": 64.79782104492188,
+          "kills": 161,
+          "real": 175.15135192871094,
+          "wave": 5,
+          "world": 174.97933959960938
+        },
+        {
+          "currency": 350,
+          "hp": 75.30807495117188,
+          "kills": 209,
+          "real": 210.1594696044922,
+          "wave": 6,
+          "world": 209.97079467773438
+        },
+        {
+          "currency": 462,
+          "hp": 77.41832733154297,
+          "kills": 259,
+          "real": 245.16758728027344,
+          "wave": 7,
+          "world": 244.96224975585938
+        },
+        {
+          "currency": 596,
+          "hp": 98.40679168701172,
+          "kills": 309,
+          "real": 280.17572021484375,
+          "wave": 8,
+          "world": 279.9537048339844
+        }
+      ]
+    },
+    "elapsed_ms": 817.9344,
+    "config": {
+      "min_scale": 0.03,
+      "transition_seconds": 0.08,
+      "wave_seconds": 35.0,
+      "waves": 8,
+      "spawn_seconds": 1.15,
+      "enemy_hp": 16.0,
+      "contact_damage": 7.0,
+      "debris_budget": 2000
+    },
+    "platform": "windows-x86_64",
+    "privileged": false
+  }
+]

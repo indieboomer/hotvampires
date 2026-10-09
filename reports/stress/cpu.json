@@ -1,0 +1,15 @@
+{
+  "build_id": "725ccd3d4addaae2",
+  "cover_removed": 726,
+  "debris_peak": 2000,
+  "enemies": 300,
+  "frames": 600,
+  "gpu_measured": false,
+  "max_frame_simulation_ms": 4.4529000000000005,
+  "mean_frame_simulation_ms": 1.0766415000000011,
+  "p95_frame_simulation_ms": 3.1083,
+  "platform": "windows-x86_64",
+  "privileged": true,
+  "projectiles_before_each_frame": 1000,
+  "purpose": "CPU diagnostic, excluded from balance evaluation"
+}
