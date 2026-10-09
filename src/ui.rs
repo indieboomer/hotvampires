@@ -21,7 +21,7 @@ pub fn draw(
             ui.label(format!("TIME ×{:.2}", game.scale));
         });
     });
-    egui::TopBottomPanel::bottom("help").show(ctx,|ui|{ui.label("WASD move · right/middle mouse drag or Q/E orbit · wheel zoom · Esc pause · F5 load checkpoint · R restart on results");ui.small(format!("{fps:.0} FPS | enemies {} | shots {} | debris {} / {} | world {:.1}s / real {:.1}s | seed {} | {}",game.enemies.len(),game.shots.len(),game.debris.len(),game.config.debris_budget,game.world,game.real,game.seed,adapter));});
+    egui::TopBottomPanel::bottom("help").show(ctx,|ui|{ui.label("WASD move · mouse motion or Q/E orbit · wheel zoom · Esc pause / free cursor · F5 load checkpoint · R restart on results");ui.small(format!("{fps:.0} FPS | enemies {} | shots {} | debris {} / {} | world {:.1}s / real {:.1}s | seed {} | {}",game.enemies.len(),game.shots.len(),game.debris.len(),game.config.debris_budget,game.world,game.real,game.seed,adapter));});
     if game.phase == Phase::Shop {
         let mut changed = false;
         egui::Window::new("Between waves — build workshop").collapsible(false).resizable(false).default_width(690.0).anchor(egui::Align2::CENTER_CENTER,[0.0,0.0]).show(ctx,|ui| {

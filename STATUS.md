@@ -1,6 +1,6 @@
 # Current status
 
-Mouse camera update: right/middle drag uses relative horizontal motion to orbit around world Y, with cursor capture released on pause, focus loss and leaving combat. Combat colors smoothly desaturate with the shared time scale; the UI and shop retain their colors.
+Mouse camera update: relative horizontal mouse motion automatically orbits around world Y with no button required. The camera elevation is 30 degrees above the ground. Camera controls and cursor capture are disabled in pause, shop and results dialogs and on focus loss, then restored on return to gameplay. Combat colors smoothly desaturate with the shared time scale; the UI and shop retain their colors.
 
 A playable first vertical slice exists: direct Rust/ash Vulkan rendering, camera-relative controls, nonzero slow motion, automatic combat, three weapons, six passive skills, twelve items, eight waves and a final elite, working between-wave shop, checkpoint saves, destructible cover, localized enemy chips and bounded breakup fragments. The indestructible ground has no destruction API. Cover occupancy is shared by collision, visibility and deterministic obstacle-clearing behavior; it persists through shops and loading.
 

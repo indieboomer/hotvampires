@@ -678,7 +678,14 @@ impl SceneCache {
         let alpha = game.alpha();
         let p = game.prev_player.lerp(game.player, alpha);
         let center = Vec3::new(p.x, 0.0, p.y);
-        let eye = center + Vec3::new(yaw.sin() * 18.0, 25.0, yaw.cos() * 18.0);
+        let elevation = 30.0_f32.to_radians();
+        let horizontal = 31.0 * elevation.cos();
+        let eye = center
+            + Vec3::new(
+                yaw.sin() * horizontal,
+                31.0 * elevation.sin(),
+                yaw.cos() * horizontal,
+            );
         let view = Mat4::look_at_rh(eye, center, Vec3::Y);
         let projection =
             Mat4::orthographic_rh(-zoom * aspect, zoom * aspect, -zoom, zoom, 0.1, 80.0);
