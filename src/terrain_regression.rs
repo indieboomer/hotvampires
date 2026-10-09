@@ -3,7 +3,7 @@ use crate::{
     content::Config,
     controller::{Body, clear, point, support},
     sim::{Enemy, Game, Grenade, Phase},
-    terrain::{COLS, Terrain},
+    terrain::COLS,
 };
 use glam::{Vec2, Vec3};
 use serde::Serialize;
@@ -79,17 +79,21 @@ pub fn audit(g: &mut Game) {
 }
 /// Diagnostic only: a region must have at least one reachable point two metres away.
 pub fn trapped(g: &Game) -> bool {
-    if !g.player_body.grounded || g.navigation.distance.len() != COLS * COLS {
+    if !g.player_body.grounded || g.navigation.distance.len() != COLS() * COLS() {
         return false;
     }
     !g.navigation.distance.iter().enumerate().any(|(i, &d)| {
-        d != u32::MAX && Terrain::column_center(i % COLS, i / COLS).distance_squared(g.player) > 4.0
+        d != u32::MAX
+            && g.terrain
+                .world_center(i % COLS(), i / COLS())
+                .distance_squared(g.player)
+                > 4.0
     })
 }
 fn stairs(g: &mut Game, diagonal: bool) {
-    for z in 0..COLS {
-        for x in 0..COLS {
-            let p = Terrain::column_center(x, z);
+    for z in 0..COLS() {
+        for x in 0..COLS() {
+            let p = g.terrain.world_center(x, z);
             if p.abs().max_element() < 10.0 {
                 let along = if diagonal {
                     (p.x + p.y) * 0.70710677
@@ -216,7 +220,8 @@ pub fn scenarios() -> Vec<ResultRow> {
                 return Err("enemies retained excavated support".into());
             }
             advance(g, Vec2::ZERO, 900);
-            advance(g, Vec2::X, 900);
+            // Keep this local traversal fixture in the active streaming window.
+            advance(g, Vec2::X, 180);
             let exited = g.enemies.iter().filter(|e| e.body.y > -0.5).count();
             if exited >= 10 {
                 Ok(format!(
@@ -248,7 +253,7 @@ pub fn scenarios() -> Vec<ResultRow> {
             place(g, pit);
             enemy(g, pit + Vec2::X * 6.0);
             advance(g, Vec2::X, 600);
-            if g.terrain.height(pit) >= crate::terrain::BOTTOM + crate::terrain::Y
+            if g.terrain.height(pit) >= crate::terrain::BOTTOM + crate::terrain::Y()
                 && g.player.x < 17.0
                 && g.metrics.unreachable_reports > 0
                 && trapped(g)

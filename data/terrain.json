@@ -1,9 +1,9 @@
 {
-  "patch_spacing": 48.0,
-  "noise_wavelength": 144.0,
-  "height_amplitude": 3.5,
-  "detail_amplitude": 0.7,
-  "flat_fraction": 0.28,
+  "patch_spacing": 32.0,
+  "noise_wavelength": 64.0,
+  "height_amplitude": 5.0,
+  "detail_amplitude": 1.0,
+  "flat_fraction": 0.2,
   "starting_clearing_radius": 12.0,
   "starting_blend_radius": 24.0
 }

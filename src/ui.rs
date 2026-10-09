@@ -13,6 +13,8 @@ pub fn draw(
         ui.horizontal(|ui| {
             ui.heading("HOT VAMPIRES");
             ui.separator();
+            ui.strong(format!("{fps:.0} FPS"));
+            ui.separator();
             ui.label(format!("WAVE {} / {}", game.wave, game.config.waves));
             ui.label(format!("HP {:.0} / {:.0}", game.hp, game.stats().hp));
             ui.label(format!("{} coins", game.currency));

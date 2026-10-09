@@ -1,0 +1,218 @@
+{
+    "scenarios":  "Same deterministic CPU scenarios before/after; native 1280x800 on RTX 3060, Vulkan timestamps, initial 30 native frames excluded",
+    "rotation_fall":  {
+                          "before":  {
+                                         "cpu_frame":  {
+                                                           "mean_ms":  6.781228888888886,
+                                                           "p95_ms":  8.388,
+                                                           "peak_ms":  21.7107
+                                                       },
+                                         "physics":  {
+                                                         "mean_ms":  0.09397833333333333,
+                                                         "p95_ms":  0.0436,
+                                                         "peak_ms":  14.2977
+                                                     },
+                                         "wall_mesh_rebuilds":  486
+                                     },
+                          "after":  {
+                                        "cpu_frame":  {
+                                                          "mean_ms":  2.6875944444444433,
+                                                          "p95_ms":  3.2016,
+                                                          "peak_ms":  10.519499999999999
+                                                      },
+                                        "physics":  {
+                                                        "mean_ms":  0.04930777777777777,
+                                                        "p95_ms":  0.038099999999999995,
+                                                        "peak_ms":  7.555499999999999
+                                                    },
+                                        "wall_mesh_rebuilds":  486
+                                    }
+                      },
+    "falling_blocks":  {
+                           "before":  {
+                                          "cpu_frame":  {
+                                                            "mean_ms":  9.35200666666667,
+                                                            "p95_ms":  17.358700000000002,
+                                                            "peak_ms":  23.490099999999998
+                                                        },
+                                          "navigation":  {
+                                                             "mean_ms":  0.7680283333333333,
+                                                             "p95_ms":  8.461,
+                                                             "peak_ms":  8.9432
+                                                         },
+                                          "navigation_rebuilds":  12,
+                                          "physics":  {
+                                                          "mean_ms":  0.21453583333333331,
+                                                          "p95_ms":  0.28400000000000003,
+                                                          "peak_ms":  14.905199999999999
+                                                      },
+                                          "remaining_falling":  0,
+                                          "scene":  {
+                                                        "mean_ms":  8.369012499999998,
+                                                        "p95_ms":  10.1323,
+                                                        "peak_ms":  15.9029
+                                                    },
+                                          "wall_mesh_rebuilds":  500,
+                                          "wall_mesh_translations":  473,
+                                          "walls":  480
+                                      },
+                           "after":  {
+                                         "cpu_frame":  {
+                                                           "mean_ms":  4.277609999999998,
+                                                           "p95_ms":  9.1643,
+                                                           "peak_ms":  11.688
+                                                       },
+                                         "navigation":  {
+                                                            "mean_ms":  0.47629083333333333,
+                                                            "p95_ms":  5.2704,
+                                                            "peak_ms":  6.157100000000001
+                                                        },
+                                         "navigation_rebuilds":  12,
+                                         "physics":  {
+                                                         "mean_ms":  0.122005,
+                                                         "p95_ms":  0.1628,
+                                                         "peak_ms":  8.0131
+                                                     },
+                                         "remaining_falling":  0,
+                                         "scene":  {
+                                                       "mean_ms":  3.6789216666666675,
+                                                       "p95_ms":  4.572299999999999,
+                                                       "peak_ms":  6.1833
+                                                   },
+                                         "wall_mesh_rebuilds":  500,
+                                         "wall_mesh_translations":  473,
+                                         "walls":  480
+                                     }
+                       },
+    "falling_tree":  {
+                         "before":  {
+                                        "cpu_frame":  {
+                                                          "mean_ms":  5.9153472222222225,
+                                                          "p95_ms":  10.6728,
+                                                          "peak_ms":  20.4479
+                                                      },
+                                        "physics":  {
+                                                        "mean_ms":  0.21224666666666664,
+                                                        "p95_ms":  1.3554000000000002,
+                                                        "peak_ms":  13.9378
+                                                    },
+                                        "remaining_toppling":  0,
+                                        "walls":  465
+                                    },
+                         "after":  {
+                                       "cpu_frame":  {
+                                                         "mean_ms":  2.3161683333333323,
+                                                         "p95_ms":  5.8877,
+                                                         "peak_ms":  9.8732
+                                                     },
+                                       "physics":  {
+                                                       "mean_ms":  0.12193999999999999,
+                                                       "p95_ms":  0.8806,
+                                                       "peak_ms":  7.2841
+                                                   },
+                                       "remaining_toppling":  0,
+                                       "walls":  465
+                                   }
+                     },
+    "native_walk":  {
+                        "before":  {
+                                       "adapter":  "NVIDIA GeForce RTX 3060",
+                                       "frame_ms":  {
+                                                        "mean":  17.565264304478962,
+                                                        "p95":  17.778199166059494,
+                                                        "peak":  237.72360384464264
+                                                    },
+                                       "frames":  210,
+                                       "gpu_ms":  {
+                                                      "mean":  1.1170230857142855,
+                                                      "p95":  1.56832,
+                                                      "peak":  1.700768
+                                                  },
+                                       "gpu_timestamp_measured":  true,
+                                       "resolution":  [
+                                                          1280,
+                                                          800
+                                                      ],
+                                       "scene_cpu_ms":  {
+                                                            "mean":  5.33962380952381,
+                                                            "p95":  5.427,
+                                                            "peak":  120.162
+                                                        },
+                                       "vertices":  {
+                                                        "mean":  169792.0,
+                                                        "p95":  175824.0,
+                                                        "peak":  178746.0
+                                                    }
+                                   },
+                        "after":  {
+                                      "adapter":  "NVIDIA GeForce RTX 3060",
+                                      "frame_ms":  {
+                                                       "mean":  17.33202611850131,
+                                                       "p95":  17.98029989004135,
+                                                       "peak":  177.43529379367828
+                                                   },
+                                      "frames":  210,
+                                      "gpu_ms":  {
+                                                     "mean":  1.1729788952380948,
+                                                     "p95":  1.585472,
+                                                     "peak":  1.708928
+                                                 },
+                                      "gpu_timestamp_measured":  true,
+                                      "resolution":  [
+                                                         1280,
+                                                         800
+                                                     ],
+                                      "scene_cpu_ms":  {
+                                                           "mean":  2.1656142857142866,
+                                                           "p95":  1.767,
+                                                           "peak":  115.12
+                                                       },
+                                      "vertices":  {
+                                                       "mean":  169122.62857142856,
+                                                       "p95":  176136.0,
+                                                       "peak":  178746.0
+                                                   }
+                                  }
+                    },
+    "native_rotating_ruin":  {
+                                 "adapter":  "NVIDIA GeForce RTX 3060",
+                                 "frame_ms":  {
+                                                  "mean":  16.690879984803143,
+                                                  "p95":  17.890799790620804,
+                                                  "peak":  18.631599843502045
+                                              },
+                                 "frames":  210,
+                                 "gpu_ms":  {
+                                                "mean":  1.075406323809523,
+                                                "p95":  1.6304,
+                                                "peak":  1.794048
+                                            },
+                                 "gpu_timestamp_measured":  true,
+                                 "resolution":  [
+                                                    1280,
+                                                    800
+                                                ],
+                                 "scene_cpu_ms":  {
+                                                      "mean":  1.5432857142857144,
+                                                      "p95":  1.796,
+                                                      "peak":  2.763
+                                                  },
+                                 "vertices":  {
+                                                  "mean":  164012.2,
+                                                  "p95":  181548.0,
+                                                  "peak":  185880.0
+                                              }
+                             },
+    "improvements":  [
+                         "GPU projection and slow-time color grading",
+                         "Same 40-byte vertex format packs UV and material into the existing attributes",
+                         "Reserve previously needed mesh capacity to avoid copying growing vertex buffers",
+                         "Skip world support searches when soil already supports the fragment",
+                         "Cache terrain support per affected region",
+                         "Filter out vegetation once per navigation rebuild",
+                         "Use constant-time occupancy lookup for toppling poses"
+                     ],
+    "textures":  "Eight 8x8 four-bit shade tiles, 256 packed bytes; repeat per voxel, fade detail at subpixel sizes; small debris excluded",
+    "limitation":  "Terrain-window streaming still creates a roughly 115 ms scene-preparation peak in the walk scenario; rotating and falling in the loaded area do not trigger that regeneration",
+    "tests":  "59 correctness tests passed; three profiling tests run separately and passed"
+}

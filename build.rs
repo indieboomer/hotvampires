@@ -19,6 +19,7 @@ fn main() {
             "data/terrain.json",
             "data/voxel.json",
             "shaders/voxel.wgsl",
+            "data/voxel-textures.json",
         ]
         .map(std::path::PathBuf::from),
     );
@@ -30,7 +31,28 @@ fn main() {
         }
     }
     println!("cargo:rustc-env=HV_SOURCE_HASH={hash:016x}");
-    let source = std::fs::read_to_string("shaders/voxel.wgsl").unwrap();
+    println!("cargo:rerun-if-changed=data/voxel-textures.json");
+    let tiles: serde_json::Value =
+        serde_json::from_slice(&std::fs::read("data/voxel-textures.json").unwrap()).unwrap();
+    let mut rows = Vec::new();
+    for tile in tiles["tiles"].as_array().unwrap() {
+        let pixels = tile["pixels"].as_array().unwrap();
+        assert_eq!(pixels.len(), 64);
+        for row in pixels.chunks_exact(8) {
+            let packed = row.iter().enumerate().fold(0u32, |bits, (x, p)| {
+                let value = p.as_u64().unwrap();
+                assert!(value < 16);
+                bits | (value as u32) << (x * 4)
+            });
+            rows.push(format!("{packed}u"));
+        }
+    }
+    assert_eq!(rows.len(), 64);
+    let source = format!(
+        "const TEXTURE_ROWS: array<u32,64> = array<u32,64>({});\n{}",
+        rows.join(","),
+        std::fs::read_to_string("shaders/voxel.wgsl").unwrap()
+    );
     let module = naga::front::wgsl::parse_str(&source).unwrap();
     let info = naga::valid::Validator::new(
         naga::valid::ValidationFlags::all(),
@@ -46,7 +68,7 @@ fn main() {
             &module,
             &info,
             &naga::back::spv::Options {
-                // CPU projection already produces Vulkan clip coordinates.
+                // The vertex shader already emits Vulkan clip coordinates.
                 flags: naga::back::spv::WriterFlags::empty(),
                 ..Default::default()
             },

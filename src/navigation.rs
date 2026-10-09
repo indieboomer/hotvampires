@@ -24,34 +24,78 @@ impl Navigation {
         self.step_height = c.step_height;
         self.max_grade = c.max_slope_degrees.to_radians().tan();
         self.clock -= dt;
-        let goal = Terrain::column(player);
-        let count = walls
-            .iter()
-            .map(|w| w.cells.iter().filter(|v| **v).count())
-            .sum();
-        if self.distance.len() == COLS * COLS
+        let goal = t.world_column(player);
+        let count = walls.iter().enumerate().fold(0usize, |h, (i, w)| {
+            if w.is_groundcover() {
+                return h;
+            }
+            h.wrapping_add(
+                (w.revision as usize).wrapping_mul(7919)
+                    ^ (w.origin.y.to_bits() as usize)
+                    ^ (w.origin.x.to_bits() as usize).rotate_left(7)
+                    ^ (w.origin.z.to_bits() as usize).rotate_left(13)
+                    ^ i.wrapping_mul(127)
+                    ^ w.cells.len(),
+            )
+        });
+        let moving_geometry = walls.iter().any(|w| w.falling && !w.is_groundcover());
+        if self.distance.len() == COLS() * COLS()
             && self.revision == t.revision
-            && self.walls == count
+            && (self.walls == count || (moving_geometry && self.clock > 0.0))
             && (self.goal == goal || self.clock > 0.0)
         {
             return;
         }
-        let walls_changed = self.walls != count;
+        // Soft vegetation never changes capsule support. Filter once per flow rebuild
+        // rather than rechecking every plant for each of the 65,536 navigation cells.
+        let blockers: Vec<_> = walls
+            .iter()
+            .filter(|w| !w.is_groundcover())
+            .cloned()
+            .collect();
+        let walls = blockers.as_slice();
         self.goal = goal;
         self.revision = t.revision;
         self.walls = count;
-        self.clock = 0.2;
+        // Actual capsule collision is checked every tick; moving flow fields refresh at 10 Hz.
+        self.clock = if moving_geometry { 0.1 } else { 0.2 };
         self.rebuilds += 1;
-        self.heights.resize(COLS * COLS, 0.0);
-        self.walk.resize(COLS * COLS, false);
+        self.heights.resize(COLS() * COLS(), 0.0);
+        self.walk.resize(COLS() * COLS(), false);
         let first = self.stamps.is_empty();
         self.stamps
-            .resize(crate::terrain::CHUNKS * crate::terrain::CHUNKS, 0);
-        for cz in 0..crate::terrain::CHUNKS {
-            for cx in 0..crate::terrain::CHUNKS {
-                let index = cx + crate::terrain::CHUNKS * cz;
-                let stamp = t.stamp(cx, cz);
-                if !first && !walls_changed && self.stamps[index] == stamp {
+            .resize(crate::terrain::CHUNKS() * crate::terrain::CHUNKS(), 0);
+        for cz in 0..crate::terrain::CHUNKS() {
+            for cx in 0..crate::terrain::CHUNKS() {
+                let index = cx + crate::terrain::CHUNKS() * cz;
+                let lo = t.world_center(
+                    cx * crate::terrain::CHUNK_CELLS,
+                    cz * crate::terrain::CHUNK_CELLS,
+                ) - Vec2::splat(c.radius + crate::terrain::XZ() * 0.5);
+                let hi = lo
+                    + Vec2::splat(
+                        crate::terrain::CHUNK_CELLS as f32 * crate::terrain::XZ()
+                            + c.radius * 2.0
+                            + c.step_height,
+                    );
+                let stamp = walls
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, w)| {
+                        !w.is_groundcover()
+                            && w.origin.x <= hi.x
+                            && w.origin.z <= hi.y
+                            && w.origin.x + w.size[0] as f32 * crate::sim::CELL >= lo.x
+                            && w.origin.z + w.size[2] as f32 * crate::sim::CELL >= lo.y
+                    })
+                    .fold(t.stamp(cx, cz), |h, (i, w)| {
+                        h.rotate_left(7)
+                            ^ w.revision.wrapping_mul(7919)
+                            ^ w.origin.y.to_bits() as u64
+                            ^ i as u64
+                            ^ w.cells.len() as u64
+                    });
+                if !first && self.stamps[index] == stamp {
                     continue;
                 }
                 self.stamps[index] = stamp;
@@ -59,8 +103,8 @@ impl Navigation {
                     for x in
                         cx * crate::terrain::CHUNK_CELLS..(cx + 1) * crate::terrain::CHUNK_CELLS
                     {
-                        let i = x + COLS * z;
-                        let p = Terrain::column_center(x, z);
+                        let i = x + COLS() * z;
+                        let p = t.world_center(x, z);
                         self.heights[i] = crate::controller::ground(
                             t,
                             walls,
@@ -73,7 +117,7 @@ impl Navigation {
                 }
             }
         }
-        self.distance = vec![u32::MAX; COLS * COLS];
+        self.distance = vec![u32::MAX; COLS() * COLS()];
         let Some((x, z)) = goal else {
             return;
         };
@@ -84,14 +128,14 @@ impl Navigation {
             for dx in -1..=1 {
                 let nx = x as i32 + dx;
                 let nz = z as i32 + dz;
-                if nx < 1 || nz < 1 || nx >= COLS as i32 - 1 || nz >= COLS as i32 - 1 {
+                if nx < 1 || nz < 1 || nx >= COLS() as i32 - 1 || nz >= COLS() as i32 - 1 {
                     continue;
                 }
-                let i = nx as usize + COLS * nz as usize;
+                let i = nx as usize + COLS() * nz as usize;
                 if !self.walk[i] {
                     continue;
                 }
-                let end = Terrain::column_center(nx as usize, nz as usize);
+                let end = t.world_center(nx as usize, nz as usize);
                 let mut p = player;
                 let mut body = crate::controller::Body::at(crate::controller::ground(
                     t,
@@ -118,17 +162,17 @@ impl Navigation {
                 (1, -1),
                 (1, 1),
             ] {
-                let x = (i % COLS) as i32 + dx;
-                let z = (i / COLS) as i32 + dz;
-                if x <= 0 || z <= 0 || x >= COLS as i32 - 1 || z >= COLS as i32 - 1 {
+                let x = (i % COLS()) as i32 + dx;
+                let z = (i / COLS()) as i32 + dz;
+                if x <= 0 || z <= 0 || x >= COLS() as i32 - 1 || z >= COLS() as i32 - 1 {
                     continue;
                 }
-                let n = x as usize + COLS * z as usize;
+                let n = x as usize + COLS() * z as usize;
                 if !self.walk[n] || self.distance[n] != u32::MAX {
                     continue;
                 }
                 let dh = self.heights[i] - self.heights[n];
-                let run = crate::terrain::XZ
+                let run = crate::terrain::XZ()
                     * if dx != 0 && dz != 0 {
                         std::f32::consts::SQRT_2
                     } else {
@@ -140,8 +184,8 @@ impl Navigation {
                     continue;
                 }
                 if dx != 0 && dz != 0 {
-                    let a = x as usize + COLS * (i / COLS);
-                    let b = i % COLS + COLS * z as usize;
+                    let a = x as usize + COLS() * (i / COLS());
+                    let b = i % COLS() + COLS() * z as usize;
                     if !self.walk[a]
                         || !self.walk[b]
                         || (self.heights[a] - self.heights[n]).abs() > c.step_height
@@ -155,9 +199,9 @@ impl Navigation {
             }
         }
     }
-    pub fn direction(&self, p: Vec2, goal: Vec2) -> Option<Vec2> {
-        let (x, z) = Terrain::column(p)?;
-        let i = x + COLS * z;
+    pub fn direction(&self, t: &Terrain, p: Vec2, goal: Vec2) -> Option<Vec2> {
+        let (x, z) = t.world_column(p)?;
+        let i = x + COLS() * z;
         if self.distance.get(i).copied()? == u32::MAX {
             return None;
         }
@@ -169,11 +213,11 @@ impl Navigation {
             for dz in -1..=1 {
                 let nx = x as i32 + dx;
                 let nz = z as i32 + dz;
-                if nx < 0 || nz < 0 || nx >= COLS as i32 || nz >= COLS as i32 {
+                if nx < 0 || nz < 0 || nx >= COLS() as i32 || nz >= COLS() as i32 {
                     continue;
                 }
-                let n = nx as usize + COLS * nz as usize;
-                let run = crate::terrain::XZ
+                let n = nx as usize + COLS() * nz as usize;
+                let run = crate::terrain::XZ()
                     * if dx != 0 && dz != 0 {
                         std::f32::consts::SQRT_2
                     } else {
@@ -182,11 +226,11 @@ impl Navigation {
                 let dh = (self.heights[n] - self.heights[i]).abs();
                 let corner = dx != 0
                     && dz != 0
-                    && (!self.walk[nx as usize + COLS * z]
-                        || !self.walk[x + COLS * nz as usize]
-                        || (self.heights[nx as usize + COLS * z] - self.heights[i]).abs()
+                    && (!self.walk[nx as usize + COLS() * z]
+                        || !self.walk[x + COLS() * nz as usize]
+                        || (self.heights[nx as usize + COLS() * z] - self.heights[i]).abs()
                             > self.step_height
-                        || (self.heights[x + COLS * nz as usize] - self.heights[i]).abs()
+                        || (self.heights[x + COLS() * nz as usize] - self.heights[i]).abs()
                             > self.step_height);
                 if self.distance[n] < self.distance[best]
                     && dh <= self.step_height
@@ -200,7 +244,7 @@ impl Navigation {
         if best == i {
             None
         } else {
-            Some((Terrain::column_center(best % COLS, best / COLS) - p).normalize_or_zero())
+            Some((t.world_center(best % COLS(), best / COLS()) - p).normalize_or_zero())
         }
     }
 }

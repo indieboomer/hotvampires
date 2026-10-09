@@ -1,0 +1,68 @@
+{
+    "scenario":  "16 falling 8x8x8 voxel blocks among streamed trees and rocks",
+    "frames":  120,
+    "physics_steps_per_frame":  2,
+    "physics_step_seconds":  0.0083333333333333332,
+    "build":  "development, opt-level 1",
+    "measurement":  "CPU physics, navigation and scene generation; excludes GPU rendering and presentation",
+    "before":  {
+                   "cpu_frame":  {
+                                     "mean_ms":  22.19102416666666,
+                                     "p95_ms":  46.540600000000005,
+                                     "peak_ms":  49.0961
+                                 },
+                   "navigation":  {
+                                      "mean_ms":  6.927791666666665,
+                                      "p95_ms":  24.545999999999996,
+                                      "peak_ms":  25.456899999999997
+                                  },
+                   "navigation_rebuilds":  36,
+                   "physics":  {
+                                   "mean_ms":  3.731169166666666,
+                                   "p95_ms":  10.748,
+                                   "peak_ms":  11.1852
+                               },
+                   "remaining_falling":  0,
+                   "scene":  {
+                                 "mean_ms":  11.531444166666668,
+                                 "p95_ms":  13.9786,
+                                 "peak_ms":  15.6846
+                             },
+                   "walls":  91
+               },
+    "after":  {
+                  "cpu_frame":  {
+                                    "mean_ms":  12.442760000000002,
+                                    "p95_ms":  17.3736,
+                                    "peak_ms":  17.848300000000002
+                                },
+                  "navigation":  {
+                                     "mean_ms":  0.42427583333333335,
+                                     "p95_ms":  4.7925,
+                                     "peak_ms":  5.1469000000000005
+                                 },
+                  "navigation_rebuilds":  12,
+                  "physics":  {
+                                  "mean_ms":  0.0598725,
+                                  "p95_ms":  0.0903,
+                                  "peak_ms":  4.1173
+                              },
+                  "remaining_falling":  0,
+                  "scene":  {
+                                "mean_ms":  11.958148333333336,
+                                "p95_ms":  14.285300000000001,
+                                "peak_ms":  16.2486
+                            },
+                  "wall_mesh_rebuilds":  91,
+                  "wall_mesh_translations":  453,
+                  "walls":  91
+              },
+    "cpu_frame_p95_reduction_percent":  62.7,
+    "fixes":  [
+                  "Recheck support only for neighboring structures after movement",
+                  "Cache contact clearance and bottom voxels, invalidating after terrain or collider changes",
+                  "Refresh moving navigation at 10 Hz while keeping capsule collision checks every physics tick",
+                  "Inspect only voxel columns and layers overlapping capsules",
+                  "Translate cached meshes when shapes are unchanged"
+              ]
+}

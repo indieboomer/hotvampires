@@ -83,13 +83,64 @@ pub struct Wall {
     pub origin: Vec3,
     pub size: [usize; 3],
     pub cells: Vec<bool>,
+    #[serde(default)]
+    pub material: u8,
+    #[serde(default)]
+    pub voxel_materials: Vec<u8>,
+    #[serde(default)]
+    pub tree_felled: bool,
+    #[serde(default)]
+    pub tree_hit_player: bool,
+    #[serde(default)]
+    pub tree_topple: Option<crate::trees::Topple>,
+    #[serde(default)]
+    pub tree_sources: Vec<u32>,
+    #[serde(default)]
+    pub tile: Option<String>,
+    #[serde(default)]
+    pub modified: bool,
+    #[serde(default)]
+    pub falling: bool,
+    #[serde(default)]
+    pub fall_speed: f32,
+    #[serde(default)]
+    pub fall_distance: f32,
+    #[serde(default)]
+    pub revision: u64,
+    #[serde(skip)]
+    pub bottom_cells: Vec<usize>,
+    #[serde(skip)]
+    pub contact_clearance: Option<f32>,
+    #[serde(skip)]
+    pub contact_stamp: u64,
+    #[serde(skip)]
+    pub support_terrain_stamp: Option<u64>,
 }
 impl Wall {
+    pub fn is_groundcover(&self) -> bool {
+        matches!(self.material, 5 | 6)
+    }
     pub fn new(origin: Vec3, size: [usize; 3]) -> Self {
         Self {
             origin,
             size,
             cells: vec![true; size.iter().product()],
+            material: 0,
+            voxel_materials: Vec::new(),
+            tree_felled: false,
+            tree_hit_player: false,
+            tree_topple: None,
+            tree_sources: Vec::new(),
+            tile: None,
+            modified: false,
+            falling: false,
+            fall_speed: 0.0,
+            fall_distance: 0.0,
+            revision: 0,
+            bottom_cells: Vec::new(),
+            contact_clearance: None,
+            contact_stamp: 0,
+            support_terrain_stamp: None,
         }
     }
     pub fn coord(&self, i: usize) -> [usize; 3] {
@@ -103,7 +154,38 @@ impl Wall {
         let [x, y, z] = self.coord(i);
         self.origin + Vec3::new(x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5) * CELL
     }
+    /// Restrict capsule queries to the voxel columns and layers touching its bounds.
+    pub fn nearby_cells(
+        &self,
+        p: Vec2,
+        r: f32,
+        low: f32,
+        high: f32,
+    ) -> impl Iterator<Item = usize> + '_ {
+        let a = ((Vec3::new(p.x - r, low, p.y - r) - self.origin) / CELL)
+            .floor()
+            .as_ivec3();
+        let b = ((Vec3::new(p.x + r, high, p.y + r) - self.origin) / CELL)
+            .floor()
+            .as_ivec3();
+        let x0 = a.x.max(0) as usize;
+        let x1 = b.x.min(self.size[0] as i32 - 1);
+        let z0 = a.z.max(0) as usize;
+        let z1 = b.z.min(self.size[2] as i32 - 1);
+        let y0 = (a.y - 1).max(0) as usize;
+        let y1 = (b.y + 1).min(self.size[1] as i32 - 1);
+        // Exclusive ends allow wholly disjoint ranges to be empty without unsigned underflow.
+        (z0..(z1 + 1).max(0) as usize).flat_map(move |z| {
+            (x0..(x1 + 1).max(0) as usize).flat_map(move |x| {
+                (y0..(y1 + 1).max(0) as usize)
+                    .map(move |y| x + self.size[0] * (y + self.size[1] * z))
+            })
+        })
+    }
     pub fn solid(&self, p: Vec2, r: f32) -> bool {
+        if self.is_groundcover() {
+            return false;
+        }
         let x0 = ((p.x - r - self.origin.x) / CELL).floor() as isize;
         let x1 = ((p.x + r - self.origin.x) / CELL).floor() as isize;
         let z0 = ((p.y - r - self.origin.z) / CELL).floor() as isize;
@@ -133,6 +215,7 @@ impl Wall {
         }
         self.cells[c.x as usize + self.size[0] * (c.y as usize + self.size[1] * c.z as usize)]
     }
+    #[cfg(test)]
     pub fn support(&mut self) -> Vec<Vec3> {
         let mut reached = vec![false; self.cells.len()];
         let mut stack = Vec::new();
@@ -246,6 +329,12 @@ pub struct Game {
     pub enemies: Vec<Enemy>,
     pub shots: Vec<Shot>,
     pub walls: Vec<Wall>,
+    #[serde(default)]
+    pub archived_props: std::collections::BTreeMap<String, Vec<Wall>>,
+    #[serde(skip)]
+    pub support_revision: u64,
+    #[serde(skip)]
+    pub support_dirty: std::collections::BTreeSet<usize>,
     pub loot: Vec<Vec2>,
     pub debris: Vec<Debris>,
     pub next_id: u64,
@@ -263,7 +352,7 @@ impl Game {
     pub fn new(seed: u64, config: Config) -> Self {
         config.validate().unwrap();
         let seed = seed.max(1);
-        Self {
+        let mut game = Self {
             schema: 2,
             terrain: crate::terrain::Terrain::new(seed),
             physics: crate::terrain::Physics::default(),
@@ -313,6 +402,9 @@ impl Game {
                 Wall::new(Vec3::new(5.0, 0.0, -4.0), [2, 10, 25]),
                 Wall::new(Vec3::new(-7.0, 0.0, -5.0), [15, 6, 2]),
             ],
+            archived_props: Default::default(),
+            support_revision: u64::MAX,
+            support_dirty: Default::default(),
             loot: Vec::new(),
             debris: Vec::new(),
             next_id: 1,
@@ -323,7 +415,9 @@ impl Game {
             momentum: 0.0,
             metrics: Metrics::default(),
             events: Vec::new(),
-        }
+        };
+        game.stream_props();
+        game
     }
     pub fn event(&mut self, kind: &str, data: serde_json::Value) {
         self.events.push(serde_json::json!({"world":self.world,"real":self.real,"wave":self.wave,"kind":kind,"data":data}));
@@ -363,6 +457,25 @@ impl Game {
     }
     /// Collision/attack ray against authoritative solids. Camera fade never enters this path.
     pub fn ray3(&self, a: Vec3, b: Vec3) -> Option<(usize, Vec3, f32)> {
+        self.trace_ray3(a, b, true)
+    }
+    pub fn cover_ray3(&self, a: Vec3, b: Vec3) -> Option<(usize, Vec3, f32)> {
+        self.trace_ray3(a, b, false)
+    }
+    fn trace_ray3(&self, a: Vec3, b: Vec3, groundcover: bool) -> Option<(usize, Vec3, f32)> {
+        let lo = a.min(b);
+        let hi = a.max(b);
+        let candidates: Vec<_> = self
+            .walls
+            .iter()
+            .enumerate()
+            .filter(|(_, w)| {
+                let top = w.origin + Vec3::from_array(w.size.map(|n| n as f32 * CELL));
+                (groundcover || !w.is_groundcover())
+                    && w.origin.cmple(hi).all()
+                    && top.cmpge(lo).all()
+            })
+            .collect();
         let steps = (a.distance(b) / 0.07).ceil().max(1.0) as usize;
         for i in 0..=steps {
             let f = i as f32 / steps as f32;
@@ -370,7 +483,7 @@ impl Game {
             if self.terrain.solid(p) {
                 return Some((self.walls.len(), p, f));
             }
-            if let Some(w) = self.walls.iter().position(|w| w.solid3(p)) {
+            if let Some(&(w, _)) = candidates.iter().find(|(_, w)| w.solid3(p)) {
                 return Some((w, p, f));
             }
         }
@@ -388,7 +501,7 @@ impl Game {
         crate::controller::point(p, y + 0.85)
     }
     pub fn obstruction(&self, a: Vec2, b: Vec2) -> Option<(usize, Vec2, f32)> {
-        self.ray3(self.body_point(a), self.body_point(b))
+        self.cover_ray3(self.body_point(a), self.body_point(b))
             .map(|(w, p, t)| (w, Vec2::new(p.x, p.z), t))
     }
     pub fn target(&self, range: f32) -> Option<u64> {
@@ -413,6 +526,12 @@ impl Game {
         serde_json::json!({"phase":self.phase,"player":self.player,"hp":self.hp,"currency":self.currency,"wave":self.wave,"scale":self.scale,"build":self.build,"offers":self.shop.offers,"walls":self.walls,"enemies":self.enemies.iter().filter(|e|e.pos.distance(self.player)<12.0 && self.obstruction(self.player,e.pos).is_none()).collect::<Vec<_>>(),"projectiles":self.shots.iter().filter(|s|s.pos.distance(self.player)<12.0 && self.obstruction(self.player,s.pos).is_none()).collect::<Vec<_>>()})
     }
     fn tick(&mut self, input: Vec2) {
+        if self.terrain.stream(self.player) {
+            self.navigation = Default::default();
+            self.enemies.retain(|e| self.terrain.bounds(e.pos, 1.0));
+            self.stream_props();
+        }
+        self.settle_structures(STEP);
         let stats = self.stats();
         self.world += STEP;
         self.wave_time += STEP;
@@ -475,8 +594,8 @@ impl Game {
                 pos = self.player + Vec2::new(angle.cos(), angle.sin()) * 13.5;
             }
             pos = pos.clamp(
-                Vec2::splat(-crate::terrain::HALF + 1.5),
-                Vec2::splat(crate::terrain::HALF - 1.5),
+                self.terrain.origin + Vec2::splat(-crate::terrain::HALF + 1.5),
+                self.terrain.origin + Vec2::splat(crate::terrain::HALF - 1.5),
             );
             let kind = if self.wave == self.config.waves && !self.elite_spawned {
                 self.elite_spawned = true;
@@ -513,7 +632,7 @@ impl Game {
             e.prev = e.pos;
             e.clock += STEP;
             let direct = (self.player - e.pos).normalize_or_zero();
-            let route = self.navigation.direction(e.pos, self.player);
+            let route = self.navigation.direction(&self.terrain, e.pos, self.player);
             let toward = route.unwrap_or(Vec2::ZERO);
             if e.kind != 1 {
                 e.direction = toward;
@@ -816,7 +935,7 @@ impl Game {
                 }
             }
             if !consumed && let Some((w, p, _)) = obstruction {
-                if !s.hostile {
+                if !s.hostile || self.walls.get(w).is_some_and(Wall::is_groundcover) {
                     self.chip_wall_at(w, p, 0.32);
                 }
                 consumed = true;
@@ -896,7 +1015,7 @@ impl Game {
         self.event("wave_start", serde_json::json!({}));
         Ok(())
     }
-    fn hurt(&mut self, damage: f32) {
+    pub(crate) fn hurt(&mut self, damage: f32) {
         if self.invulnerability > 0.0 {
             return;
         }
@@ -1039,25 +1158,47 @@ impl Game {
         let Some(wall) = self.walls.get_mut(w) else {
             return;
         };
+        let groundcover = wall.is_groundcover();
         let mut removed = Vec::new();
         for i in 0..wall.cells.len() {
             let c = wall.center(i);
             if wall.cells[i] && c.distance(p) < r {
                 wall.cells[i] = false;
+                if let Some(topple) = &mut wall.tree_topple
+                    && let Some(&source) = wall.tree_sources.get(i)
+                    && let Some(voxel) = topple.voxels.get_mut(source as usize)
+                {
+                    voxel.material = 0;
+                }
                 removed.push(c);
             }
         }
         if removed.is_empty() {
             return;
         }
-        removed.extend(wall.support());
+        wall.modified = true;
+        wall.revision += 1;
+        wall.bottom_cells.clear();
+        wall.contact_clearance = None;
+        self.invalidate_support_near(w);
         self.metrics.cover_removed += removed.len() as u32;
         self.event(
             "destruction",
             serde_json::json!({"wall":w,"removed":removed.len()}),
         );
         for c in removed.iter().step_by((removed.len() / 48).max(1)).take(48) {
-            self.emit(*c, 1, [0.55, 0.61, 0.62]);
+            self.emit(
+                *c,
+                1,
+                if groundcover {
+                    [0.35, 0.52, 0.18]
+                } else {
+                    [0.55, 0.61, 0.62]
+                },
+            );
+        }
+        if groundcover {
+            return;
         }
         self.metrics.falls += crate::controller::reconcile(
             &self.terrain,
@@ -1076,7 +1217,7 @@ impl Game {
             ) as u32;
         }
     }
-    fn emit(&mut self, pos: Vec3, count: usize, color: [f32; 3]) {
+    pub(crate) fn emit(&mut self, pos: Vec3, count: usize, color: [f32; 3]) {
         for _ in 0..count {
             let velocity = Vec3::new(
                 (self.visual_rng.unit() - 0.5) * 4.0,
@@ -1165,25 +1306,54 @@ impl Game {
             || !g.player_body.y.is_finite()
             || !g.player_body.velocity.is_finite()
             || !g.player_body.visual_y.is_finite()
-            || !(crate::terrain::BOTTOM + crate::terrain::Y - 0.02..12.0).contains(&g.player_body.y)
+            || !(crate::terrain::BOTTOM + crate::terrain::Y() - 0.02..12.0)
+                .contains(&g.player_body.y)
         {
             return Err("Invalid voxel checkpoint".into());
         }
         g.config.validate()?;
         g.cards = crate::content::load();
-        if g.walls.iter().any(|w| {
-            !w.origin.is_finite()
-                || w.size.iter().any(|&n| n == 0 || n > 100)
-                || w.size.iter().try_fold(1usize, |n, &v| n.checked_mul(v)) != Some(w.cells.len())
-        }) || g.build.iter().any(|o| {
-            !g.cards
-                .iter()
-                .any(|c| c.id == o.id && o.level > 0 && o.level <= c.max_level)
-        }) {
+        if g.walls
+            .iter()
+            .chain(g.archived_props.values().flatten())
+            .any(|w| {
+                !w.origin.is_finite()
+                    || !w.fall_speed.is_finite()
+                    || w.fall_speed < 0.0
+                    || !w.fall_distance.is_finite()
+                    || w.fall_distance < 0.0
+                    || w.material > 7
+                    || (!w.voxel_materials.is_empty()
+                        && (w.voxel_materials.len() != w.cells.len()
+                            || w.voxel_materials
+                                .iter()
+                                .any(|&v| !matches!(v, 0 | 1 | 2 | 7))))
+                    || w.tree_topple.as_ref().is_some_and(|t| {
+                        !t.validate()
+                            || w.tree_sources.len() != w.cells.len()
+                            || w.cells.iter().enumerate().any(|(i, &solid)| {
+                                solid
+                                    && (w.tree_sources[i] as usize >= t.voxels.len()
+                                        || t.voxels[w.tree_sources[i] as usize].material == 0)
+                            })
+                    })
+                    || w.size.iter().any(|&n| n == 0 || n > 100)
+                    || w.size.iter().try_fold(1usize, |n, &v| n.checked_mul(v))
+                        != Some(w.cells.len())
+            })
+            || g.build.iter().any(|o| {
+                !g.cards
+                    .iter()
+                    .any(|c| c.id == o.id && o.level > 0 && o.level <= c.max_level)
+            })
+        {
             return Err("Invalid checkpoint content".into());
         }
         g.debris.clear();
         g.events.clear();
+        g.terrain.remember_loaded_surfaces();
+        g.support_revision = u64::MAX;
+        g.stream_props();
         Ok(g)
     }
 }

@@ -33,7 +33,7 @@ impl Camera {
             foot + Vec3::Y * 0.8 - side,
         ]
         .iter()
-        .any(|&q| g.ray3(eye, q).is_some());
+        .any(|&q| g.cover_ray3(eye, q).is_some());
         if hidden {
             self.clear_time = 0.0;
         } else {

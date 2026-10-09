@@ -1,4 +1,4 @@
-param([switch]$Shop,[switch]$NativePurchase,[switch]$Still,[switch]$Terrain,[switch]$Settings,[switch]$Crater,[string]$Executable='target/iteration/debug/hot-vampires.exe')
+param([switch]$Shop,[switch]$NativePurchase,[switch]$Still,[switch]$Terrain,[switch]$Settings,[switch]$Crater,[switch]$Tree,[switch]$Ruin,[switch]$Textures,[string]$Executable='target/iteration/debug/hot-vampires.exe')
 $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $project
@@ -23,7 +23,8 @@ function Capture-GameClient($graphics,$handle) {
  try { if (-not [GameWindow]::PrintWindow($handle,$captureDc,3)) { throw 'Native client capture failed' } }
  finally { $graphics.ReleaseHdc($captureDc) }
 }
-$arguments = if ($Crater) { @('--crater-demo','--frames','1800') } elseif ($Settings) { @('--settings','--frames','1500') } elseif ($Shop) { @('--checkpoint','reports/verified/mobile-11-shop.json','--frames','1500') } elseif ($Terrain) { @('--terrain-walk','--frames','2400') } elseif ($Still) { @('--frames','1500') } else { @('--bot','--frames','1500') }
+$arguments = if ($Ruin) { @('--ruin-demo','--frames','1500') } elseif ($Tree) { @('--tree-demo','--frames','1500') } elseif ($Crater) { @('--crater-demo','--frames','1800') } elseif ($Settings) { @('--settings','--frames','1500') } elseif ($Shop) { @('--checkpoint','reports/verified/mobile-11-shop.json','--frames','1500') } elseif ($Terrain) { @('--terrain-walk','--frames','2400') } elseif ($Still) { @('--frames','1500') } else { @('--bot','--frames','1500') }
+if ($Textures) { $arguments = @('--ruin-demo','--texture-preview','--frames','1500') }
 $process = Start-Process -FilePath "$project/$Executable" -ArgumentList $arguments -WorkingDirectory $project -WindowStyle Hidden -PassThru -RedirectStandardOutput "$project/target/visual-stdout.txt" -RedirectStandardError "$project/target/visual-stderr.txt"
 try {
  Start-Sleep -Seconds 2
@@ -41,7 +42,8 @@ try {
  $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
  Capture-GameClient $graphics $handle
  New-Item -ItemType Directory -Path reports/visual -Force | Out-Null
- $name = if ($Crater) { 'crater' } elseif ($Settings) { 'settings' } elseif ($Shop) { 'shop' } elseif ($Terrain) { 'terrain' } elseif ($Still) { 'slow-motion' } else { 'combat' }
+ $name = if ($Ruin) { 'ruin' } elseif ($Tree) { 'tree' } elseif ($Crater) { 'crater' } elseif ($Settings) { 'settings' } elseif ($Shop) { 'shop' } elseif ($Terrain) { 'terrain' } elseif ($Still) { 'slow-motion' } else { 'combat' }
+ if ($Textures) { $name = 'textures' }
  $bitmap.Save("$project/reports/visual/$name.png")
  $graphics.Dispose()
  $bitmap.Dispose()

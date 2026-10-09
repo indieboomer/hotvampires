@@ -27,16 +27,18 @@ impl Body {
 }
 pub fn support(t: &Terrain, p: Vec2, r: f32) -> f32 {
     let mut h = t.height(p);
-    let lo = ((p - Vec2::splat(r) + Vec2::splat(crate::terrain::HALF)) / crate::terrain::XZ)
-        .floor()
-        .as_ivec2();
-    let hi = ((p + Vec2::splat(r) + Vec2::splat(crate::terrain::HALF)) / crate::terrain::XZ)
-        .floor()
-        .as_ivec2();
-    for z in lo.y.max(0)..=hi.y.min(crate::terrain::COLS as i32 - 1) {
-        for x in lo.x.max(0)..=hi.x.min(crate::terrain::COLS as i32 - 1) {
-            let center = Terrain::column_center(x as usize, z as usize);
-            let d = ((p - center).abs() - Vec2::splat(crate::terrain::XZ * 0.5)).max(Vec2::ZERO);
+    let lo = ((p - t.origin - Vec2::splat(r) + Vec2::splat(crate::terrain::HALF))
+        / crate::terrain::XZ())
+    .floor()
+    .as_ivec2();
+    let hi = ((p - t.origin + Vec2::splat(r) + Vec2::splat(crate::terrain::HALF))
+        / crate::terrain::XZ())
+    .floor()
+    .as_ivec2();
+    for z in lo.y.max(0)..=hi.y.min(crate::terrain::COLS() as i32 - 1) {
+        for x in lo.x.max(0)..=hi.x.min(crate::terrain::COLS() as i32 - 1) {
+            let center = t.world_center(x as usize, z as usize);
+            let d = ((p - center).abs() - Vec2::splat(crate::terrain::XZ() * 0.5)).max(Vec2::ZERO);
             if d.length_squared() < r * r {
                 // Exact lower hemisphere contact with a voxel's top corner.
                 // A quarter-metre stair rises continuously over the rounded foot.
@@ -50,15 +52,19 @@ pub fn support(t: &Terrain, p: Vec2, r: f32) -> f32 {
 pub fn ground(t: &Terrain, walls: &[Wall], p: Vec2, r: f32, ceiling: f32) -> f32 {
     let mut h = support(t, p, r);
     for w in walls {
+        if w.is_groundcover() {
+            continue;
+        }
         if p.x < w.origin.x - r
             || p.y < w.origin.z - r
             || p.x > w.origin.x + w.size[0] as f32 * crate::sim::CELL + r
             || p.y > w.origin.z + w.size[2] as f32 * crate::sim::CELL + r
+            || w.origin.y > ceiling + r
         {
             continue;
         }
-        for (i, &v) in w.cells.iter().enumerate() {
-            if !v {
+        for i in w.nearby_cells(p, r, h - crate::sim::CELL, ceiling + r) {
+            if !w.cells[i] {
                 continue;
             }
             let q = w.center(i);
@@ -84,6 +90,9 @@ pub fn clear(t: &Terrain, walls: &[Wall], p: Vec2, y: f32, c: &Physics) -> bool 
     }
     // Circular footprint versus voxel boxes, rather than a snag-prone square.
     for w in walls {
+        if w.is_groundcover() {
+            continue;
+        }
         let lo = Vec2::new(w.origin.x, w.origin.z) - Vec2::splat(c.radius);
         let hi = Vec2::new(
             w.origin.x + w.size[0] as f32 * crate::sim::CELL,
@@ -98,8 +107,8 @@ pub fn clear(t: &Terrain, walls: &[Wall], p: Vec2, y: f32, c: &Physics) -> bool 
         {
             continue;
         }
-        for (i, &v) in w.cells.iter().enumerate() {
-            if !v {
+        for i in w.nearby_cells(p, c.radius, y, y + c.body_height) {
+            if !w.cells[i] {
                 continue;
             }
             let q = w.center(i);

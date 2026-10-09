@@ -15,6 +15,14 @@ pub struct Vertex {
     color: [f32; 3],
     cut: [f32; 4],
 }
+#[repr(C)]
+#[derive(Clone, Copy, Default, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct SceneParams {
+    matrix: [f32; 16],
+    player: [f32; 4],
+    cut: [f32; 4],
+    look: [f32; 4],
+}
 pub struct Renderer {
     _entry: Entry,
     instance: ash::Instance,
@@ -34,6 +42,7 @@ pub struct Renderer {
     format: vk::Format,
     pass: vk::RenderPass,
     pipeline: vk::Pipeline,
+    shadow_pipeline: vk::Pipeline,
     layout: vk::PipelineLayout,
     pool: vk::CommandPool,
     command: vk::CommandBuffer,
@@ -46,6 +55,11 @@ pub struct Renderer {
     gui: Option<egui_ash_renderer::Renderer>,
     pending_free: Vec<egui::TextureId>,
     pub adapter: String,
+    timestamps: vk::QueryPool,
+    timestamp_period: f32,
+    timestamp_bits: u32,
+    timestamp_written: bool,
+    pub gpu_ms: Option<f64>,
 }
 impl Renderer {
     pub fn new(window: &Window) -> Result<Self, String> {
@@ -121,6 +135,20 @@ impl Renderer {
                 None,
             )?;
             let queue = device.get_device_queue(family, 0);
+            let timestamp_bits = instance.get_physical_device_queue_family_properties(physical)
+                [family as usize]
+                .timestamp_valid_bits;
+            let timestamps =
+                if timestamp_bits > 0 && std::env::args().any(|a| a == "--render-profile") {
+                    device.create_query_pool(
+                        &vk::QueryPoolCreateInfo::default()
+                            .query_type(vk::QueryType::TIMESTAMP)
+                            .query_count(2),
+                        None,
+                    )?
+                } else {
+                    vk::QueryPool::null()
+                };
             let swap_api = ash::khr::swapchain::Device::new(&instance, &device);
             let formats = surface_api.get_physical_device_surface_formats(physical, surface)?;
             let format = formats
@@ -176,8 +204,14 @@ impl Renderer {
                     .dependencies(&deps),
                 None,
             )?;
-            let layout =
-                device.create_pipeline_layout(&vk::PipelineLayoutCreateInfo::default(), None)?;
+            let push_ranges = [vk::PushConstantRange::default()
+                .stage_flags(vk::ShaderStageFlags::VERTEX)
+                .offset(0)
+                .size(std::mem::size_of::<SceneParams>() as u32)];
+            let layout = device.create_pipeline_layout(
+                &vk::PipelineLayoutCreateInfo::default().push_constant_ranges(&push_ranges),
+                None,
+            )?;
             let vs_words = ash::util::read_spv(&mut std::io::Cursor::new(include_bytes!(
                 concat!(env!("OUT_DIR"), "/vs.spv")
             )))?;
@@ -246,6 +280,13 @@ impl Renderer {
                 .depth_write_enable(true)
                 .depth_compare_op(vk::CompareOp::LESS);
             let blend_attachments = [vk::PipelineColorBlendAttachmentState::default()
+                .blend_enable(true)
+                .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
+                .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
+                .color_blend_op(vk::BlendOp::ADD)
+                .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                .dst_alpha_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
+                .alpha_blend_op(vk::BlendOp::ADD)
                 .color_write_mask(vk::ColorComponentFlags::RGBA)];
             let blend =
                 vk::PipelineColorBlendStateCreateInfo::default().attachments(&blend_attachments);
@@ -266,6 +307,11 @@ impl Renderer {
                 .render_pass(pass)];
             let pipeline = device
                 .create_graphics_pipelines(vk::PipelineCache::null(), &info, None)
+                .map_err(|(_, e)| e)?[0];
+            let shadow_depth = depth.depth_write_enable(false);
+            let shadow_info = [info[0].depth_stencil_state(&shadow_depth)];
+            let shadow_pipeline = device
+                .create_graphics_pipelines(vk::PipelineCache::null(), &shadow_info, None)
                 .map_err(|(_, e)| e)?[0];
             device.destroy_shader_module(vs, None);
             device.destroy_shader_module(fs, None);
@@ -315,6 +361,7 @@ impl Renderer {
                 format: format.format,
                 pass,
                 pipeline,
+                shadow_pipeline,
                 layout,
                 pool,
                 command,
@@ -327,6 +374,11 @@ impl Renderer {
                 gui: Some(gui),
                 pending_free: Vec::new(),
                 adapter,
+                timestamps,
+                timestamp_period: props.limits.timestamp_period,
+                timestamp_bits,
+                timestamp_written: false,
+                gpu_ms: None,
             };
             r.resize(window)?;
             Ok(r)
@@ -499,22 +551,43 @@ impl Renderer {
     pub fn draw(
         &mut self,
         vertices: &[Vertex],
+        params: &SceneParams,
         context: &egui::Context,
         output: egui::FullOutput,
     ) -> Result<bool, String> {
         unsafe {
-            self.draw_inner(vertices, context, output)
+            self.draw_inner(vertices, params, context, output)
                 .map_err(|e| e.to_string())
         }
     }
     unsafe fn draw_inner(
         &mut self,
         vertices: &[Vertex],
+        params: &SceneParams,
         context: &egui::Context,
         output: egui::FullOutput,
     ) -> Result<bool, Box<dyn std::error::Error>> {
         unsafe {
             self.device.wait_for_fences(&[self.fence], true, u64::MAX)?;
+            if self.timestamp_written {
+                let mut values = [0u64; 2];
+                self.device.get_query_pool_results(
+                    self.timestamps,
+                    0,
+                    &mut values,
+                    vk::QueryResultFlags::TYPE_64,
+                )?;
+                let mask = if self.timestamp_bits < 64 {
+                    (1u64 << self.timestamp_bits) - 1
+                } else {
+                    u64::MAX
+                };
+                self.gpu_ms = Some(
+                    (values[1].wrapping_sub(values[0]) & mask) as f64
+                        * self.timestamp_period as f64
+                        / 1_000_000.0,
+                );
+            }
             let (image, suboptimal) = match self.swap_api.acquire_next_image(
                 self.swap,
                 u64::MAX,
@@ -570,6 +643,16 @@ impl Renderer {
                 .reset_command_buffer(self.command, vk::CommandBufferResetFlags::empty())?;
             self.device
                 .begin_command_buffer(self.command, &vk::CommandBufferBeginInfo::default())?;
+            if self.timestamps != vk::QueryPool::null() {
+                self.device
+                    .cmd_reset_query_pool(self.command, self.timestamps, 0, 2);
+                self.device.cmd_write_timestamp(
+                    self.command,
+                    vk::PipelineStageFlags::TOP_OF_PIPE,
+                    self.timestamps,
+                    0,
+                );
+            }
             let clear = [
                 vk::ClearValue {
                     color: vk::ClearColorValue {
@@ -616,8 +699,25 @@ impl Renderer {
             self.device.cmd_set_scissor(self.command, 0, &[area]);
             self.device
                 .cmd_bind_vertex_buffers(self.command, 0, &[self.buffer], &[0]);
-            self.device
-                .cmd_draw(self.command, vertices.len() as u32, 1, 0, 0);
+            self.device.cmd_push_constants(
+                self.command,
+                self.layout,
+                vk::ShaderStageFlags::VERTEX,
+                0,
+                bytemuck::bytes_of(params),
+            );
+            let opaque = params.look[1] as u32;
+            debug_assert!(opaque as usize <= vertices.len());
+            self.device.cmd_draw(self.command, opaque, 1, 0, 0);
+            if opaque < vertices.len() as u32 {
+                self.device.cmd_bind_pipeline(
+                    self.command,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    self.shadow_pipeline,
+                );
+                self.device
+                    .cmd_draw(self.command, vertices.len() as u32 - opaque, 1, opaque, 0);
+            }
             gui.cmd_draw(
                 self.command,
                 self.extent,
@@ -625,6 +725,15 @@ impl Renderer {
                 &primitives,
             )?;
             self.device.cmd_end_render_pass(self.command);
+            if self.timestamps != vk::QueryPool::null() {
+                self.device.cmd_write_timestamp(
+                    self.command,
+                    vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+                    self.timestamps,
+                    1,
+                );
+                self.timestamp_written = true;
+            }
             self.device.end_command_buffer(self.command)?;
             self.device.reset_fences(&[self.fence])?;
             let waits = [self.acquire];
@@ -663,11 +772,15 @@ impl Drop for Renderer {
             self.device.destroy_buffer(self.buffer, None);
             self.device.free_memory(self.memory, None);
             self.device.destroy_pipeline(self.pipeline, None);
+            self.device.destroy_pipeline(self.shadow_pipeline, None);
             self.device.destroy_pipeline_layout(self.layout, None);
             self.device.destroy_render_pass(self.pass, None);
             self.device.destroy_command_pool(self.pool, None);
             self.device.destroy_semaphore(self.acquire, None);
             self.device.destroy_fence(self.fence, None);
+            if self.timestamps != vk::QueryPool::null() {
+                self.device.destroy_query_pool(self.timestamps, None);
+            }
             self.device.destroy_device(None);
             self.surface_api.destroy_surface(self.surface, None);
             self.instance.destroy_instance(None);
@@ -677,21 +790,31 @@ impl Drop for Renderer {
 
 #[derive(Default)]
 pub struct SceneCache {
+    pub params: SceneParams,
+    mesh_capacity: usize,
+    shadow_capacity: usize,
     ground: std::collections::BTreeMap<(i32, i32), (u64, Vec<Vertex>)>,
     pub camera: crate::camera::Camera,
     pub mesh_rebuilds: u64,
     pub mesh_us: u64,
     pub mesh_peak_us: u64,
     pub scene_peak_us: u64,
+    pub scene_last_us: u64,
+    shadows: Vec<Option<(Vec3, u64, Vec<Vertex>)>>,
+    pub wall_mesh_rebuilds: u64,
+    pub wall_mesh_translations: u64,
     ground_seed: Option<u64>,
-    walls: Vec<(Vec<bool>, Vec<Vertex>)>,
+    walls: Vec<(Vec<bool>, Vec3, Vec<Vertex>, [usize; 3], u8, Vec<u8>)>,
 }
 impl SceneCache {
     pub fn synchronized(&self, game: &Game) -> bool {
-        (0..crate::terrain::CHUNKS).all(|z| {
-            (0..crate::terrain::CHUNKS).all(|x| {
+        (0..crate::terrain::CHUNKS()).all(|z| {
+            (0..crate::terrain::CHUNKS()).all(|x| {
                 self.ground
-                    .get(&(x as i32, z as i32))
+                    .get(&(
+                        x as i32 + (game.terrain.origin.x / 8.0) as i32,
+                        z as i32 + (game.terrain.origin.y / 8.0) as i32,
+                    ))
                     .is_some_and(|(stamp, _)| *stamp == game.terrain.stamp(x, z))
             })
         })
@@ -717,10 +840,31 @@ impl SceneCache {
             Mat4::orthographic_rh(-zoom * aspect, zoom * aspect, -zoom, zoom, 0.05, 128.0);
         let matrix = projection * view;
         self.update_ground(game);
-        self.walls
-            .resize_with(game.walls.len(), || (Vec::new(), Vec::new()));
+        self.shadows.resize_with(game.walls.len(), || None);
+        self.walls.resize_with(game.walls.len(), || {
+            (
+                Vec::new(),
+                Vec3::splat(f32::INFINITY),
+                Vec::new(),
+                [0; 3],
+                0,
+                Vec::new(),
+            )
+        });
         for (index, wall) in game.walls.iter().enumerate() {
-            if self.walls[index].0 == wall.cells {
+            if self.walls[index].0 == wall.cells
+                && self.walls[index].3 == wall.size
+                && self.walls[index].4 == wall.material
+                && self.walls[index].5 == wall.voxel_materials
+            {
+                let delta = wall.origin - self.walls[index].1;
+                if delta != Vec3::ZERO {
+                    for vertex in &mut self.walls[index].2 {
+                        vertex.position = (Vec3::from_array(vertex.position) + delta).to_array();
+                    }
+                    self.walls[index].1 = wall.origin;
+                    self.wall_mesh_translations += 1;
+                }
                 continue;
             }
             let mut wall_mesh = Vec::new();
@@ -760,11 +904,58 @@ impl SceneCache {
                     }
                 }
                 if exposed.iter().any(|v| *v) {
-                    let color = if c[1] == wall.size[1] - 1 {
-                        [0.26, 0.57, 0.36]
-                    } else {
-                        [0.66, 0.61, 0.47]
+                    let material = wall
+                        .voxel_materials
+                        .get(i)
+                        .copied()
+                        .filter(|&m| m != 0)
+                        .unwrap_or(wall.material);
+                    let color = match material {
+                        7 => {
+                            if (c[0] / 2 + c[1] / 2 + c[2] / 2) % 3 == 0 {
+                                [0.51, 0.49, 0.43]
+                            } else {
+                                [0.63, 0.59, 0.50]
+                            }
+                        }
+                        5 => {
+                            if (c[0] + c[2]) % 2 == 0 {
+                                [0.36, 0.52, 0.16]
+                            } else {
+                                [0.48, 0.60, 0.22]
+                            }
+                        }
+                        6 => {
+                            if (c[0] + c[1] + c[2]) % 3 == 0 {
+                                [0.24, 0.43, 0.19]
+                            } else {
+                                [0.34, 0.53, 0.22]
+                            }
+                        }
+                        1 => [0.34, 0.22, 0.12],
+                        2 => {
+                            if (c[0] + c[1] + c[2]) % 3 == 0 {
+                                [0.20, 0.38, 0.16]
+                            } else {
+                                [0.29, 0.48, 0.20]
+                            }
+                        }
+                        3 => {
+                            if (c[0] + c[1] + c[2]) % 4 == 0 {
+                                [0.42, 0.45, 0.48]
+                            } else {
+                                [0.52, 0.54, 0.56]
+                            }
+                        }
+                        _ => {
+                            if c[1] == wall.size[1] - 1 {
+                                [0.26, 0.57, 0.36]
+                            } else {
+                                [0.66, 0.61, 0.47]
+                            }
+                        }
                     };
+                    let first = wall_mesh.len();
                     add_cube_faces(
                         &mut wall_mesh,
                         Mat4::IDENTITY,
@@ -773,20 +964,94 @@ impl SceneCache {
                         color,
                         exposed,
                     );
+                    shade_voxel_corners(&mut wall_mesh[first..], wall, c, exposed);
+                    let tile = match material {
+                        1 => 4,
+                        2 | 5 | 6 => 5,
+                        3 => 3,
+                        7 => 6,
+                        _ => 7,
+                    };
+                    texture_faces(
+                        &mut wall_mesh[first..],
+                        wall.origin,
+                        Vec3::splat(CELL),
+                        tile,
+                    );
                 }
             }
-            self.walls[index] = (wall.cells.clone(), wall_mesh);
+            self.walls[index] = (
+                wall.cells.clone(),
+                wall.origin,
+                wall_mesh,
+                wall.size,
+                wall.material,
+                wall.voxel_materials.clone(),
+            );
+            self.wall_mesh_rebuilds += 1;
+            self.shadows[index] = None;
         }
-        let mut mesh = Vec::new();
-        for (_, ground_mesh) in self.ground.values() {
-            mesh.extend_from_slice(ground_mesh);
+        let mut mesh = Vec::with_capacity(self.mesh_capacity);
+        for (&(x, z), (_, ground_mesh)) in &self.ground {
+            let min = Vec3::new(x as f32 * 8.0 - 32.0, -8.0, z as f32 * 8.0 - 32.0);
+            if visible_bounds(matrix, min, min + Vec3::new(8.0, 16.0, 8.0)) {
+                mesh.extend_from_slice(ground_mesh);
+            }
         }
-        for (_, wall_mesh) in &self.walls {
-            mesh.extend_from_slice(wall_mesh);
+        for (index, (_, _, wall_mesh, _, _, _)) in self.walls.iter().enumerate() {
+            let wall = &game.walls[index];
+            if visible_bounds(
+                matrix,
+                wall.origin,
+                wall.origin + Vec3::from_array(wall.size.map(|n| n as f32 * CELL)),
+            ) {
+                mesh.extend_from_slice(wall_mesh);
+            }
         }
         for v in &mut mesh {
             v.cut[2] = 1.0;
         }
+        // Soft vegetation does not require a separate shadow patch.
+        // Its face lighting and cached voxel occlusion keep individual tufts readable.
+        let mut shadow_mesh = Vec::with_capacity(self.shadow_capacity);
+        for (index, wall) in game.walls.iter().enumerate() {
+            if wall.is_groundcover() {
+                continue;
+            }
+            if wall.cells.iter().all(|&c| !c) {
+                continue;
+            }
+            let extent = Vec3::from_array(wall.size.map(|n| n as f32 * CELL));
+            let ground = game.terrain.height(glam::Vec2::new(
+                wall.origin.x + extent.x * 0.5,
+                wall.origin.z + extent.z * 0.5,
+            ));
+            let height = (wall.origin.y + extent.y - ground).max(0.0);
+            let center = wall.origin + extent * 0.5 + Vec3::new(height * 0.3, 0.0, -height * 0.2);
+            let radii = glam::Vec2::new(
+                (extent.x * 0.5 + height * 0.15).clamp(0.3, 2.2),
+                (extent.z * 0.5 + height * 0.1).clamp(0.3, 2.2),
+            );
+            if !visible_bounds(
+                matrix,
+                center - Vec3::new(radii.x, 16.0, radii.y),
+                center + Vec3::new(radii.x, 1.0, radii.y),
+            ) {
+                continue;
+            }
+            let stale = self.shadows[index]
+                .as_ref()
+                .is_none_or(|(origin, stamp, _)| {
+                    *origin != wall.origin || *stamp != self.mesh_rebuilds
+                });
+            if stale {
+                let mut shadow = Vec::new();
+                soft_shadow(&mut shadow, &game.terrain, center, radii, 0.27);
+                self.shadows[index] = Some((wall.origin, self.mesh_rebuilds, shadow));
+            }
+            shadow_mesh.extend_from_slice(&self.shadows[index].as_ref().unwrap().2);
+        }
+        let mut actor_details = Vec::new();
         let mut cube = |pos: Vec3, size: Vec3, color: [f32; 3]| {
             add_cube(&mut mesh, Mat4::IDENTITY, pos, size, color)
         };
@@ -800,6 +1065,10 @@ impl SceneCache {
             game.player_body.grounded,
         )];
         for e in &game.enemies {
+            let center = Vec3::new(e.pos.x, e.body.visual_y + 0.8, e.pos.y);
+            if !visible_bounds(matrix, center - Vec3::ONE, center + Vec3::ONE) {
+                continue;
+            }
             // The cutaway belongs to the player; it must not expose covered enemies.
             if self.camera.fade > 0.01 && game.obstruction(game.player, e.pos).is_some() {
                 continue;
@@ -821,10 +1090,12 @@ impl SceneCache {
         }
         for (pos, facing, color, chipped, kind, y, grounded) in bodies {
             let root = Vec3::new(pos.x, y, pos.y);
-            cube(
-                root + Vec3::new(0.0, 0.015, 0.0),
-                Vec3::new(0.85, 0.02, 0.65),
-                [0.11, 0.2, 0.19],
+            soft_shadow(
+                &mut shadow_mesh,
+                &game.terrain,
+                root + Vec3::new(0.35, 0.0, -0.2),
+                glam::Vec2::new(0.62, 0.43),
+                0.35,
             );
             let forward = Vec3::new(facing.sin(), 0.0, facing.cos());
             let side = Vec3::new(forward.z, 0.0, -forward.x);
@@ -874,7 +1145,29 @@ impl SceneCache {
                             1.32 + (y as f32 - 2.0) * 0.08,
                             (z as f32 - 2.0) * 0.08,
                         );
-                        cube(
+                        let occupied = |nx: i32, ny: i32, nz: i32| {
+                            (0..5).contains(&nx)
+                                && (0..5).contains(&ny)
+                                && (0..5).contains(&nz)
+                                && !(nx > 0 && nx < 4 && ny > 0 && ny < 4 && nz > 0 && nz < 4)
+                                && !(chipped > 0 && nx == 4 && ny == 4)
+                        };
+                        let faces = if chipped == 0 {
+                            [z == 0, z == 4, x == 0, x == 4, y == 4, y == 0]
+                        } else {
+                            [
+                                (0, 0, -1),
+                                (0, 0, 1),
+                                (-1, 0, 0),
+                                (1, 0, 0),
+                                (0, 1, 0),
+                                (0, -1, 0),
+                            ]
+                            .map(|(dx, dy, dz)| !occupied(x + dx, y + dy, z + dz))
+                        };
+                        add_cube_faces(
+                            &mut actor_details,
+                            Mat4::IDENTITY,
                             root + offset,
                             Vec3::splat(0.078),
                             if kind == 0 {
@@ -882,6 +1175,7 @@ impl SceneCache {
                             } else {
                                 color
                             },
+                            faces,
                         );
                     }
                 }
@@ -936,31 +1230,21 @@ impl SceneCache {
         let player_clip =
             matrix.transform_point3(Vec3::new(p.x, game.player_body.visual_y + 0.8, p.y));
         let rx = 2.2 / (zoom * aspect);
+        mesh.extend(actor_details);
         let ry = 2.0 / zoom;
-        for v in &mut mesh {
-            let solid = v.cut[2];
-            let mut p = matrix.transform_point3(Vec3::from_array(v.position));
-            p.y = -p.y;
-            v.position = p.to_array();
-            v.cut = [
-                (p.x - player_clip.x) / rx,
-                (p.y + player_clip.y) / ry,
-                solid * self.camera.fade,
-                player_clip.z - p.z,
-            ];
-            if game.phase == crate::sim::Phase::Combat {
-                let activity = if game.config.min_scale < 1.0 {
-                    (game.scale - game.config.min_scale) / (1.0 - game.config.min_scale)
-                } else {
-                    1.0
-                };
-                let saturation = 0.08 + 0.92 * activity.clamp(0.0, 1.0);
-                let luminance = v.color[0] * 0.2126 + v.color[1] * 0.7152 + v.color[2] * 0.0722;
-                v.color = v
-                    .color
-                    .map(|channel| luminance + (channel - luminance) * saturation);
-            }
-        }
+        let saturation = if game.phase == crate::sim::Phase::Combat && game.config.min_scale < 1.0 {
+            0.08 + 0.92
+                * ((game.scale - game.config.min_scale) / (1.0 - game.config.min_scale))
+                    .clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
+        self.params = SceneParams {
+            matrix: matrix.to_cols_array(),
+            player: [player_clip.x, player_clip.y, player_clip.z, 0.0],
+            cut: [rx, ry, self.camera.fade, 0.0],
+            look: [saturation, 0.0, 0.0, 0.0],
+        };
         if self.camera.fade > 0.05 {
             // Thin cyan silhouette only; geometry remains opaque outside the local ellipse.
             let mut outline = Vec::new();
@@ -989,13 +1273,17 @@ impl SceneCache {
                 q.y = -q.y;
                 q.z = 0.0001;
                 v.position = q.to_array();
+                v.cut = [0.0, 0.0, -2.0, 0.0];
                 v.color = v.color.map(|c| c * self.camera.fade);
             }
             mesh.extend(outline);
         }
-        self.scene_peak_us = self
-            .scene_peak_us
-            .max(scene_start.elapsed().as_micros() as u64);
+        self.shadow_capacity = shadow_mesh.capacity();
+        self.params.look[1] = mesh.len() as f32;
+        mesh.extend(shadow_mesh);
+        self.mesh_capacity = mesh.capacity();
+        self.scene_last_us = scene_start.elapsed().as_micros() as u64;
+        self.scene_peak_us = self.scene_peak_us.max(self.scene_last_us);
         mesh
     }
     fn update_ground(&mut self, game: &Game) {
@@ -1006,9 +1294,16 @@ impl SceneCache {
         }
         let start = std::time::Instant::now();
         let t = &game.terrain;
-        for cz in 0..CHUNKS {
-            for cx in 0..CHUNKS {
-                let key = (cx as i32, cz as i32);
+        let offset = (t.origin / 8.0).as_ivec2();
+        self.ground.retain(|&(x, z), _| {
+            x >= offset.x
+                && z >= offset.y
+                && x < offset.x + CHUNKS() as i32
+                && z < offset.y + CHUNKS() as i32
+        });
+        for cz in 0..CHUNKS() {
+            for cx in 0..CHUNKS() {
+                let key = (cx as i32 + offset.x, cz as i32 + offset.y);
                 let stamp = t.stamp(cx, cz);
                 if self.ground.get(&key).is_some_and(|(s, _)| *s == stamp) {
                     continue;
@@ -1016,55 +1311,94 @@ impl SceneCache {
                 let mut mesh = Vec::new();
                 for z in cz * CHUNK_CELLS..(cz + 1) * CHUNK_CELLS {
                     for x in cx * CHUNK_CELLS..(cx + 1) * CHUNK_CELLS {
-                        let p = crate::terrain::Terrain::column_center(x, z);
-                        let top = t.tops[x + crate::terrain::COLS * z] as isize;
+                        let p = t.world_center(x, z);
+                        let top = t.tops[x + crate::terrain::COLS() * z] as isize;
                         // Merge the exposed vertical voxel strip; surfaces still coincide with every voxel.
                         let h = t.top(x, z);
                         let edge = crate::terrain::Terrain::protected(x, z);
                         let color = if edge || top == 0 {
                             [0.35, 0.4, 0.46]
-                        } else if h < crate::terrain::height(game.seed, p) - Y * 0.5 {
+                        } else if h < crate::terrain::height(game.seed, p) - Y() * 0.5 {
                             [0.48, 0.35, 0.23]
                         } else {
                             [0.26, 0.4, 0.25]
                         };
-                        add_cube_faces(
-                            &mut mesh,
-                            Mat4::IDENTITY,
-                            Vec3::new(p.x, h - Y * 0.5, p.y),
-                            Vec3::new(XZ, Y, XZ),
-                            color,
-                            [false, false, false, false, true, false],
-                        );
+                        // Merge equal-height top runs without changing the voxel surface.
+                        let same_surface = |nx: usize| {
+                            t.tops[nx + crate::terrain::COLS() * z] as isize == top
+                                && (t.top(nx, z)
+                                    < crate::terrain::height(game.seed, t.world_center(nx, z))
+                                        - Y() * 0.5)
+                                    == (h < crate::terrain::height(game.seed, p) - Y() * 0.5)
+                        };
+                        if x == cx * CHUNK_CELLS || !same_surface(x - 1) {
+                            let mut end = x + 1;
+                            while end < (cx + 1) * CHUNK_CELLS && same_surface(end) {
+                                end += 1;
+                            }
+                            let width = (end - x) as f32 * XZ();
+                            let first = mesh.len();
+                            add_cube_faces(
+                                &mut mesh,
+                                Mat4::IDENTITY,
+                                Vec3::new(p.x + (width - XZ()) * 0.5, h - Y() * 0.5, p.y),
+                                Vec3::new(width, Y(), XZ()),
+                                color,
+                                [false, false, false, false, true, false],
+                            );
+                            texture_faces(
+                                &mut mesh[first..],
+                                Vec3::ZERO,
+                                Vec3::new(XZ(), Y(), XZ()),
+                                if edge || top == 0 {
+                                    3
+                                } else if color == [0.26, 0.4, 0.25] {
+                                    2
+                                } else {
+                                    1
+                                },
+                            );
+                        }
                         for (dx, dz, face) in [(0, -1, 0), (0, 1, 1), (-1, 0, 2), (1, 0, 3)] {
                             let nx = x as isize + dx;
                             let nz = z as isize + dz;
                             let neighbor = if nx < 0
                                 || nz < 0
-                                || nx >= crate::terrain::COLS as isize
-                                || nz >= crate::terrain::COLS as isize
+                                || nx >= crate::terrain::COLS() as isize
+                                || nz >= crate::terrain::COLS() as isize
                             {
-                                -1
+                                ((t.height(p + glam::Vec2::new(dx as f32, dz as f32) * XZ())
+                                    - BOTTOM)
+                                    / Y())
+                                .round() as isize
+                                    - 1
                             } else {
-                                t.tops[nx as usize + crate::terrain::COLS * nz as usize] as isize
+                                t.tops[nx as usize + crate::terrain::COLS() * nz as usize] as isize
                             };
                             if neighbor >= top {
                                 continue;
                             }
-                            let low = BOTTOM + (neighbor + 1) as f32 * Y;
+                            let low = BOTTOM + (neighbor + 1) as f32 * Y();
                             let mut exposed = [false; 6];
                             exposed[face] = true;
+                            let first = mesh.len();
                             add_cube_faces(
                                 &mut mesh,
                                 Mat4::IDENTITY,
                                 Vec3::new(p.x, (low + h) * 0.5, p.y),
-                                Vec3::new(XZ, h - low, XZ),
+                                Vec3::new(XZ(), h - low, XZ()),
                                 if edge {
                                     [0.34, 0.38, 0.43]
                                 } else {
                                     [0.48, 0.35, 0.23]
                                 },
                                 exposed,
+                            );
+                            texture_faces(
+                                &mut mesh[first..],
+                                Vec3::ZERO,
+                                Vec3::new(XZ(), Y(), XZ()),
+                                if edge { 3 } else { 1 },
                             );
                         }
                     }
@@ -1083,7 +1417,35 @@ impl SceneCache {
     }
 }
 fn add_cube(mesh: &mut Vec<Vertex>, m: Mat4, pos: Vec3, size: Vec3, color: [f32; 3]) {
+    let first = mesh.len();
     add_cube_faces(mesh, m, pos, size, color, [true; 6]);
+    if size.max_element() <= 0.1 {
+        for v in &mut mesh[first..] {
+            v.cut[3] = 0.0;
+        }
+    }
+}
+
+fn texture_faces(vertices: &mut [Vertex], origin: Vec3, scale: Vec3, tile: u8) {
+    for face in vertices.chunks_exact_mut(6) {
+        let a = Vec3::from_array(face[0].position);
+        let b = Vec3::from_array(face[1].position);
+        let c = Vec3::from_array(face[2].position);
+        let normal = (b - a).cross(c - a).abs();
+        let axes = if normal.y >= normal.x && normal.y >= normal.z {
+            [0, 2]
+        } else if normal.x >= normal.z {
+            [2, 1]
+        } else {
+            [0, 1]
+        };
+        for v in face {
+            let p = (Vec3::from_array(v.position) - origin) / scale;
+            v.cut[0] = p[axes[0]];
+            v.cut[1] = p[axes[1]];
+            v.cut[3] = tile as f32;
+        }
+    }
 }
 fn add_cube_faces(
     mesh: &mut Vec<Vertex>,
@@ -1104,7 +1466,7 @@ fn add_cube_faces(
         Vec3::new(h.x, h.y, h.z),
         Vec3::new(-h.x, h.y, h.z),
     ];
-    for (f, (face, light)) in [
+    for (f, (face, _)) in [
         ([0, 1, 2, 3], 0.66),
         ([5, 4, 7, 6], 0.83),
         ([4, 0, 3, 7], 0.7),
@@ -1118,13 +1480,287 @@ fn add_cube_faces(
         if !exposed[f] {
             continue;
         }
+        // Warm directional sunlight and cool hemispheric skylight, baked once for scenery.
+        let normal = m
+            .transform_vector3([-Vec3::Z, Vec3::Z, -Vec3::X, Vec3::X, Vec3::Y, -Vec3::Y][f])
+            .normalize();
+        let sun = normal
+            .dot(Vec3::new(-0.45, 0.83, 0.32).normalize())
+            .max(0.0);
+        let sky = 0.82 + 0.18 * normal.y;
+        let light = Vec3::new(0.48, 0.53, 0.62) * sky + Vec3::new(0.65, 0.59, 0.46) * sun;
         for i in [0, 1, 2, 0, 2, 3] {
             let p = m.transform_point3(pos + corners[face[i]]);
             mesh.push(Vertex {
                 position: p.to_array(),
-                color: color.map(|c| c * light),
-                cut: [0.0; 4],
+                color: (Vec3::from_array(color) * light).to_array(),
+                cut: [
+                    if i == 1 || i == 2 { 1.0 } else { 0.0 },
+                    if i >= 2 { 1.0 } else { 0.0 },
+                    0.0,
+                    8.0,
+                ],
             });
+        }
+    }
+}
+
+fn visible_bounds(matrix: Mat4, min: Vec3, max: Vec3) -> bool {
+    let mut lo = Vec3::splat(f32::INFINITY);
+    let mut hi = Vec3::splat(f32::NEG_INFINITY);
+    for x in [min.x, max.x] {
+        for y in [min.y, max.y] {
+            for z in [min.z, max.z] {
+                let p = matrix.transform_point3(Vec3::new(x, y, z));
+                lo = lo.min(p);
+                hi = hi.max(p);
+            }
+        }
+    }
+    hi.x >= -1.02 && lo.x <= 1.02 && hi.y >= -1.02 && lo.y <= 1.02 && hi.z >= 0.0 && lo.z <= 1.0
+}
+
+fn soft_shadow(
+    mesh: &mut Vec<Vertex>,
+    terrain: &crate::terrain::Terrain,
+    center: Vec3,
+    radii: glam::Vec2,
+    opacity: f32,
+) {
+    let cell = crate::terrain::XZ();
+    let min = ((glam::Vec2::new(center.x, center.z) - radii) / cell)
+        .floor()
+        .as_ivec2();
+    let max = ((glam::Vec2::new(center.x, center.z) + radii) / cell)
+        .ceil()
+        .as_ivec2();
+    for z in min.y..max.y {
+        for x in min.x..max.x {
+            let p = glam::Vec2::new(x as f32, z as f32) * cell;
+            let uv =
+                (p + glam::Vec2::splat(cell * 0.5) - glam::Vec2::new(center.x, center.z)) / radii;
+            if uv.length_squared() > 1.3 {
+                continue;
+            }
+            let height = terrain.height(p + glam::Vec2::splat(cell * 0.5)) + 0.008;
+            for corner in [[0., 0.], [1., 0.], [1., 1.], [0., 0.], [1., 1.], [0., 1.]] {
+                let q = p + glam::Vec2::from_array(corner) * cell;
+                let uv = (q - glam::Vec2::new(center.x, center.z)) / radii;
+                mesh.push(Vertex {
+                    position: [q.x, height, q.y],
+                    color: [0.08, 0.12, 0.18],
+                    cut: [uv.x, uv.y, -1.0, opacity],
+                });
+            }
+        }
+    }
+}
+
+fn shade_voxel_corners(
+    vertices: &mut [Vertex],
+    wall: &crate::sim::Wall,
+    cell: [usize; 3],
+    exposed: [bool; 6],
+) {
+    let occupied = |p: [i32; 3]| {
+        if (0..3).any(|a| p[a] < 0 || p[a] >= wall.size[a] as i32) {
+            return false;
+        }
+        wall.cells[p[0] as usize + wall.size[0] * (p[1] as usize + wall.size[1] * p[2] as usize)]
+    };
+    let mut start = 0;
+    for (face, normal) in [
+        [0, 0, -1],
+        [0, 0, 1],
+        [-1, 0, 0],
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, -1, 0],
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if !exposed[face] {
+            continue;
+        }
+        let axis = normal.iter().position(|&n| n != 0).unwrap();
+        let tangents = match axis {
+            0 => [1, 2],
+            1 => [0, 2],
+            _ => [0, 1],
+        };
+        for vertex in &mut vertices[start..start + 6] {
+            let mut outside = cell.map(|n| n as i32);
+            outside[axis] += normal[axis];
+            let mut a = outside;
+            let mut b = outside;
+            let center = wall
+                .center(cell[0] + wall.size[0] * (cell[1] + wall.size[1] * cell[2]))
+                .to_array();
+            a[tangents[0]] += if vertex.position[tangents[0]] > center[tangents[0]] {
+                1
+            } else {
+                -1
+            };
+            b[tangents[1]] += if vertex.position[tangents[1]] > center[tangents[1]] {
+                1
+            } else {
+                -1
+            };
+            let mut corner = a;
+            corner[tangents[1]] = b[tangents[1]];
+            let sa = occupied(a);
+            let sb = occupied(b);
+            let occlusion = if sa && sb {
+                3
+            } else {
+                sa as u32 + sb as u32 + occupied(corner) as u32
+            };
+            vertex.color = vertex.color.map(|c| c * (1.0 - occlusion as f32 * 0.13));
+        }
+        start += 6;
+    }
+}
+
+#[cfg(test)]
+mod lighting_tests {
+    use super::*;
+
+    #[test]
+    fn merged_ground_faces_repeat_per_voxel_and_small_particles_have_no_texture() {
+        let mut mesh = Vec::new();
+        add_cube_faces(
+            &mut mesh,
+            Mat4::IDENTITY,
+            Vec3::ZERO,
+            Vec3::new(2.0, 0.125, 0.25),
+            [0.3; 3],
+            [false, false, false, false, true, false],
+        );
+        texture_faces(&mut mesh, Vec3::ZERO, Vec3::new(0.25, 0.125, 0.25), 2);
+        let min = mesh.iter().map(|v| v.cut[0]).fold(f32::INFINITY, f32::min);
+        let max = mesh
+            .iter()
+            .map(|v| v.cut[0])
+            .fold(f32::NEG_INFINITY, f32::max);
+        assert_eq!(max - min, 8.0);
+        assert!(mesh.iter().all(|v| v.cut[3] == 2.0));
+        mesh.clear();
+        add_cube(
+            &mut mesh,
+            Mat4::IDENTITY,
+            Vec3::ZERO,
+            Vec3::splat(0.08),
+            [1.0; 3],
+        );
+        assert!(mesh.iter().all(|v| v.cut[3] == 0.0));
+    }
+
+    #[test]
+    fn rotating_only_changes_gpu_params_and_keeps_cached_world_vertices() {
+        let mut g = Game::new(42, Default::default());
+        g.walls = vec![crate::sim::Wall::new(Vec3::new(3.0, 0.0, 3.0), [3, 5, 3])];
+        let mut cache = SceneCache::default();
+        cache.scene(&g, 0.0, 10.0, 1.6);
+        let original: Vec<_> = cache.walls[0]
+            .2
+            .iter()
+            .map(|v| (v.position, v.cut))
+            .collect();
+        let matrix = cache.params.matrix;
+        let rebuilds = cache.wall_mesh_rebuilds;
+        cache.scene(&g, 1.2, 10.0, 1.6);
+        assert_eq!(cache.wall_mesh_rebuilds, rebuilds);
+        assert_ne!(cache.params.matrix, matrix);
+        assert_eq!(
+            cache.walls[0]
+                .2
+                .iter()
+                .map(|v| (v.position, v.cut))
+                .collect::<Vec<_>>(),
+            original
+        );
+    }
+
+    #[test]
+    fn visibility_keeps_partial_and_camera_enclosing_bounds() {
+        assert!(visible_bounds(
+            Mat4::IDENTITY,
+            Vec3::new(0.9, -0.2, 0.2),
+            Vec3::new(1.5, 0.2, 0.8)
+        ));
+        assert!(visible_bounds(
+            Mat4::IDENTITY,
+            Vec3::splat(-10.0),
+            Vec3::splat(10.0)
+        ));
+        assert!(!visible_bounds(
+            Mat4::IDENTITY,
+            Vec3::new(1.1, 0.0, 0.1),
+            Vec3::new(2.0, 1.0, 0.8)
+        ));
+        assert!(!visible_bounds(
+            Mat4::IDENTITY,
+            Vec3::new(-0.5, -0.5, 1.1),
+            Vec3::new(0.5, 0.5, 2.0)
+        ));
+    }
+
+    #[test]
+    fn voxel_ao_darkens_creases_and_disappears_when_neighbor_is_removed() {
+        let mut wall = crate::sim::Wall::new(Vec3::ZERO, [2, 2, 1]);
+        wall.cells = vec![true, false, false, true];
+        let mut face = Vec::new();
+        add_cube_faces(
+            &mut face,
+            Mat4::IDENTITY,
+            wall.center(0),
+            Vec3::splat(CELL),
+            [1.0; 3],
+            [false, false, false, true, false, false],
+        );
+        let original = face.clone();
+        shade_voxel_corners(
+            &mut face,
+            &wall,
+            [0, 0, 0],
+            [false, false, false, true, false, false],
+        );
+        assert!(
+            face.iter()
+                .zip(&original)
+                .any(|(a, b)| a.color[0] < b.color[0])
+        );
+        wall.cells[3] = false;
+        face.clone_from(&original);
+        shade_voxel_corners(
+            &mut face,
+            &wall,
+            [0, 0, 0],
+            [false, false, false, true, false, false],
+        );
+        assert!(face.iter().zip(&original).all(|(a, b)| a.color == b.color));
+    }
+
+    #[test]
+    fn shadow_mesh_follows_excavated_terrain_and_preserves_receiver_depth() {
+        let mut game = Game::new(42, Default::default());
+        let center = Vec3::ZERO;
+        game.terrain.excavate(Vec3::ZERO, 0.6, 1.0);
+        let mut shadow = Vec::new();
+        soft_shadow(
+            &mut shadow,
+            &game.terrain,
+            center,
+            glam::Vec2::splat(1.0),
+            0.3,
+        );
+        assert!(!shadow.is_empty());
+        for tile in shadow.chunks_exact(6) {
+            let p = glam::Vec2::new(tile[0].position[0], tile[0].position[2])
+                + glam::Vec2::splat(crate::terrain::XZ() * 0.5);
+            assert!((tile[0].position[1] - game.terrain.height(p) - 0.008).abs() < 0.0001);
+            assert!(tile.iter().all(|v| v.cut[2] == -1.0));
         }
     }
 }

@@ -1,4 +1,4 @@
-//! Seeded profile plus authoritative finite voxel soil. Edits are synchronous.
+//! Seeded, streamed voxel soil. Edits are synchronous and survive chunk eviction.
 //! Bits, cached column surfaces and neighboring mesh stamps change together.
 use glam::{Vec2, Vec3};
 use serde::{Deserialize, Serialize};
@@ -16,14 +16,29 @@ pub struct Settings {
     pub starting_blend_radius: f32,
 }
 
-pub const XZ: f32 = 0.25;
-pub const Y: f32 = 0.125;
+#[allow(non_snake_case)]
+pub fn XZ() -> f32 {
+    0.25
+}
+#[allow(non_snake_case)]
+pub fn Y() -> f32 {
+    0.125
+}
 pub const BOTTOM: f32 = -8.0;
-pub const COLS: usize = 256;
-pub const LAYERS: usize = 128;
+#[allow(non_snake_case)]
+pub fn COLS() -> usize {
+    256
+}
+#[allow(non_snake_case)]
+pub fn LAYERS() -> usize {
+    128
+}
 pub const CHUNK_CELLS: usize = 32;
-pub const CHUNKS: usize = COLS / CHUNK_CELLS;
-pub const HALF: f32 = COLS as f32 * XZ * 0.5;
+#[allow(non_snake_case)]
+pub fn CHUNKS() -> usize {
+    COLS() / CHUNK_CELLS
+}
+pub const HALF: f32 = 32.0;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Physics {
@@ -63,7 +78,7 @@ impl Physics {
         ]
         .iter()
         .all(|v| v.is_finite())
-            && (Y..=1.0).contains(&self.step_height)
+            && (Y()..=1.0).contains(&self.step_height)
             && (0.0..=self.step_height).contains(&self.ground_snap)
             && (1.0..80.0).contains(&self.max_slope_degrees)
             && (1.0..50.0).contains(&self.gravity)
@@ -88,6 +103,10 @@ pub struct Terrain {
     pub revision: u64,
     pub chunks: Vec<Chunk>,
     pub tops: Vec<i16>,
+    #[serde(default)]
+    pub origin: Vec2,
+    #[serde(default)]
+    pub edits: std::collections::BTreeMap<String, i16>,
 }
 #[derive(Default, Debug)]
 pub struct Edit {
@@ -101,6 +120,79 @@ impl Default for Terrain {
     }
 }
 impl Terrain {
+    fn edit_key(p: Vec2) -> String {
+        format!(
+            "{},{}",
+            (p.x / XZ()).floor() as i64,
+            (p.y / XZ()).floor() as i64
+        )
+    }
+    /// Shift by whole chunks. Overlapping occupancy is reused; only entering chunks are generated.
+    pub fn stream(&mut self, player: Vec2) -> bool {
+        if (player - self.origin).abs().max_element() < 8.0 {
+            return false;
+        }
+        let span = CHUNK_CELLS as f32 * XZ();
+        let origin = (player / span).floor() * span;
+        if origin == self.origin {
+            return false;
+        }
+        let shift = ((origin - self.origin) / span).as_ivec2();
+        let old_chunks = std::mem::take(&mut self.chunks);
+        let old_tops = std::mem::take(&mut self.tops);
+        self.chunks = Vec::with_capacity(CHUNKS() * CHUNKS());
+        self.tops = vec![0; COLS() * COLS()];
+        self.origin = origin;
+        for cz in 0..CHUNKS() {
+            for cx in 0..CHUNKS() {
+                let ox = cx as i32 + shift.x;
+                let oz = cz as i32 + shift.y;
+                let reused = ox >= 0 && oz >= 0 && ox < CHUNKS() as i32 && oz < CHUNKS() as i32;
+                let mut chunk = if reused {
+                    old_chunks[ox as usize + CHUNKS() * oz as usize].clone()
+                } else {
+                    Chunk {
+                        bits: vec![0; CHUNK_CELLS * CHUNK_CELLS * LAYERS() / 8],
+                        checksum: 0,
+                    }
+                };
+                for dz in 0..CHUNK_CELLS {
+                    for dx in 0..CHUNK_CELLS {
+                        let x = cx * CHUNK_CELLS + dx;
+                        let z = cz * CHUNK_CELLS + dz;
+                        let top = if reused {
+                            old_tops[ox as usize * CHUNK_CELLS
+                                + dx
+                                + COLS() * (oz as usize * CHUNK_CELLS + dz)]
+                        } else {
+                            let p = self.world_center(x, z);
+                            let top =
+                                self.edits
+                                    .get(&Self::edit_key(p))
+                                    .copied()
+                                    .unwrap_or_else(|| {
+                                        ((height(self.seed, p).clamp(-6.0, 6.0) - BOTTOM) / Y())
+                                            .ceil() as i16
+                                            - 1
+                                    });
+                            for y in 0..=top as usize {
+                                let bit = dx + CHUNK_CELLS * (dz + CHUNK_CELLS * y);
+                                chunk.bits[bit / 8] |= 1 << (bit % 8);
+                            }
+                            top
+                        };
+                        self.tops[x + COLS() * z] = top;
+                    }
+                }
+                if !reused {
+                    chunk.checksum = checksum(&chunk.bits);
+                }
+                self.chunks.push(chunk);
+            }
+        }
+        self.revision += 1;
+        true
+    }
     pub fn digest(&self) -> u64 {
         self.chunks
             .iter()
@@ -113,25 +205,27 @@ impl Terrain {
         let mut t = Self {
             seed,
             revision: 0,
+            origin: Vec2::ZERO,
+            edits: Default::default(),
             chunks: vec![
                 Chunk {
-                    bits: vec![0; CHUNK_CELLS * CHUNK_CELLS * LAYERS / 8],
+                    bits: vec![0; CHUNK_CELLS * CHUNK_CELLS * LAYERS() / 8],
                     checksum: 0
                 };
-                CHUNKS * CHUNKS
+                CHUNKS() * CHUNKS()
             ],
-            tops: vec![0; COLS * COLS],
+            tops: vec![0; COLS() * COLS()],
         };
-        for z in 0..COLS {
-            for x in 0..COLS {
+        for z in 0..COLS() {
+            for x in 0..COLS() {
                 let p = Self::column_center(x, z);
                 let surface = if Self::protected(x, z) {
                     2.5
                 } else {
-                    height(seed, p).clamp(-3.5, 3.5)
+                    height(seed, p).clamp(-6.0, 6.0)
                 };
-                let top = ((surface - BOTTOM) / Y).ceil() as i16 - 1;
-                t.tops[x + COLS * z] = top;
+                let top = ((surface - BOTTOM) / Y()).ceil() as i16 - 1;
+                t.tops[x + COLS() * z] = top;
                 for y in 0..=top as usize {
                     t.set_raw(x, y, z, true);
                 }
@@ -142,23 +236,32 @@ impl Terrain {
         }
         t
     }
-    pub fn protected(x: usize, z: usize) -> bool {
-        x < 2 || z < 2 || x >= COLS - 2 || z >= COLS - 2
+    pub fn protected(_x: usize, _z: usize) -> bool {
+        false
+    }
+    pub fn world_center(&self, x: usize, z: usize) -> Vec2 {
+        Self::column_center(x, z) + self.origin
+    }
+    pub fn world_column(&self, p: Vec2) -> Option<(usize, usize)> {
+        Self::column(p - self.origin)
     }
     pub fn column_center(x: usize, z: usize) -> Vec2 {
-        Vec2::new((x as f32 + 0.5) * XZ - HALF, (z as f32 + 0.5) * XZ - HALF)
+        Vec2::new(
+            (x as f32 + 0.5) * XZ() - HALF,
+            (z as f32 + 0.5) * XZ() - HALF,
+        )
     }
     pub fn column(p: Vec2) -> Option<(usize, usize)> {
-        let x = ((p.x + HALF) / XZ).floor() as isize;
-        let z = ((p.y + HALF) / XZ).floor() as isize;
-        if x < 0 || z < 0 || x >= COLS as isize || z >= COLS as isize {
+        let x = ((p.x + HALF) / XZ()).floor() as isize;
+        let z = ((p.y + HALF) / XZ()).floor() as isize;
+        if x < 0 || z < 0 || x >= COLS() as isize || z >= COLS() as isize {
             None
         } else {
             Some((x as usize, z as usize))
         }
     }
     fn address(x: usize, y: usize, z: usize) -> (usize, usize) {
-        let chunk = x / CHUNK_CELLS + CHUNKS * (z / CHUNK_CELLS);
+        let chunk = x / CHUNK_CELLS + CHUNKS() * (z / CHUNK_CELLS);
         let bit = x % CHUNK_CELLS + CHUNK_CELLS * (z % CHUNK_CELLS + CHUNK_CELLS * y);
         (chunk, bit)
     }
@@ -174,9 +277,9 @@ impl Terrain {
         if x < 0
             || z < 0
             || y < 0
-            || x >= COLS as isize
-            || z >= COLS as isize
-            || y >= LAYERS as isize
+            || x >= COLS() as isize
+            || z >= COLS() as isize
+            || y >= LAYERS() as isize
         {
             return false;
         }
@@ -184,26 +287,29 @@ impl Terrain {
         self.chunks[c].bits[b / 8] & (1 << (b % 8)) != 0
     }
     pub fn solid(&self, p: Vec3) -> bool {
-        let Some((x, z)) = Self::column(Vec2::new(p.x, p.z)) else {
+        let Some((x, z)) = self.world_column(Vec2::new(p.x, p.z)) else {
             return false;
         };
         self.cell(
             x as isize,
-            ((p.y - BOTTOM) / Y).floor() as isize,
+            ((p.y - BOTTOM) / Y()).floor() as isize,
             z as isize,
         )
     }
     pub fn top(&self, x: usize, z: usize) -> f32 {
-        BOTTOM + (self.tops[x + COLS * z] + 1) as f32 * Y
+        BOTTOM + (self.tops[x + COLS() * z] + 1) as f32 * Y()
     }
     pub fn height(&self, p: Vec2) -> f32 {
-        Self::column(p).map_or(BOTTOM + Y, |(x, z)| self.top(x, z))
+        self.world_column(p).map_or_else(
+            || (height(self.seed, p).clamp(-6.0, 6.0) / Y()).ceil() * Y(),
+            |(x, z)| self.top(x, z),
+        )
     }
     pub fn bounds(&self, p: Vec2, r: f32) -> bool {
-        p.abs().max_element() < HALF - 0.5 - r
+        p.is_finite() && (p - self.origin).abs().max_element() < HALF - 0.5 - r
     }
     pub fn stamp(&self, cx: usize, cz: usize) -> u64 {
-        let mut h = self.chunks[cx + CHUNKS * cz].checksum;
+        let mut h = self.chunks[cx + CHUNKS() * cz].checksum;
         for (dx, dz) in [
             (-1, 0),
             (1, 0),
@@ -216,8 +322,8 @@ impl Terrain {
         ] {
             let x = cx as i32 + dx;
             let z = cz as i32 + dz;
-            if x >= 0 && z >= 0 && x < CHUNKS as i32 && z < CHUNKS as i32 {
-                h = h.rotate_left(11) ^ self.chunks[x as usize + CHUNKS * z as usize].checksum;
+            if x >= 0 && z >= 0 && x < CHUNKS() as i32 && z < CHUNKS() as i32 {
+                h = h.rotate_left(11) ^ self.chunks[x as usize + CHUNKS() * z as usize].checksum;
             }
         }
         h
@@ -233,12 +339,13 @@ impl Terrain {
         if Self::protected(x, z) {
             return;
         }
-        let old = self.tops[x + COLS * z];
+        let old = self.tops[x + COLS() * z];
         let new_top = new_top.max(0).min(old);
         if new_top == old {
             return;
         }
-        let p = Self::column_center(x, z);
+        let p = self.world_center(x, z);
+        self.edits.insert(Self::edit_key(p), new_top);
         for y in new_top + 1..=old {
             self.set_raw(x, y as usize, z, false);
             edit.removed += 1;
@@ -246,11 +353,11 @@ impl Terrain {
                 && (edit.removed.is_multiple_of(7) || edit.fragments.is_empty())
             {
                 edit.fragments
-                    .push(Vec3::new(p.x, BOTTOM + (y as f32 + 0.5) * Y, p.y));
+                    .push(Vec3::new(p.x, BOTTOM + (y as f32 + 0.5) * Y(), p.y));
             }
         }
-        self.tops[x + COLS * z] = new_top;
-        dirty.insert(x / CHUNK_CELLS + CHUNKS * (z / CHUNK_CELLS));
+        self.tops[x + COLS() * z] = new_top;
+        dirty.insert(x / CHUNK_CELLS + CHUNKS() * (z / CHUNK_CELLS));
     }
     /// Approximately spherical (vertically scaled) excavation with real rim erosion.
     /// Removed soil caps collapse vertically, keeping this first version cave-free.
@@ -260,17 +367,21 @@ impl Terrain {
             return edit;
         }
         let r = radius.clamp(0.25, 8.0);
-        let ry = (r * strength).clamp(Y, 6.0);
+        let ry = (r * strength).clamp(Y(), 6.0);
         let min = Vec2::new(center.x - r - 1.0, center.z - r - 1.0);
         let max = Vec2::new(center.x + r + 1.0, center.z + r + 1.0);
-        let x0 = ((min.x + HALF) / XZ).floor().max(1.0) as usize;
-        let z0 = ((min.y + HALF) / XZ).floor().max(1.0) as usize;
-        let x1 = ((max.x + HALF) / XZ).ceil().clamp(1.0, (COLS - 2) as f32) as usize;
-        let z1 = ((max.y + HALF) / XZ).ceil().clamp(1.0, (COLS - 2) as f32) as usize;
+        let x0 = ((min.x - self.origin.x + HALF) / XZ()).floor().max(1.0) as usize;
+        let z0 = ((min.y - self.origin.y + HALF) / XZ()).floor().max(1.0) as usize;
+        let x1 = ((max.x - self.origin.x + HALF) / XZ())
+            .ceil()
+            .clamp(1.0, (COLS() - 2) as f32) as usize;
+        let z1 = ((max.y - self.origin.y + HALF) / XZ())
+            .ceil()
+            .clamp(1.0, (COLS() - 2) as f32) as usize;
         let mut dirty = std::collections::BTreeSet::new();
         for z in z0..=z1 {
             for x in x0..=x1 {
-                let p = Self::column_center(x, z);
+                let p = self.world_center(x, z);
                 let horizontal = (p - Vec2::new(center.x, center.z)).length_squared() / (r * r);
                 if horizontal >= 1.0 {
                     continue;
@@ -279,9 +390,9 @@ impl Terrain {
                 let low = center.y - extent;
                 let high = center.y + extent;
                 let top = self.top(x, z);
-                if high >= BOTTOM + Y && low < top && high > low {
-                    let lowest = ((low - BOTTOM) / Y).floor() as i16;
-                    if BOTTOM + (lowest.max(1) as f32 + 0.5) * Y <= high {
+                if high >= BOTTOM + Y() && low < top && high > low {
+                    let lowest = ((low - BOTTOM) / Y()).floor() as i16;
+                    if BOTTOM + (lowest.max(1) as f32 + 0.5) * Y() <= high {
                         self.lower(x, z, lowest - 1, &mut edit, &mut dirty);
                     }
                 }
@@ -294,12 +405,12 @@ impl Terrain {
                 let mut changes = Vec::new();
                 for z in z0..=z1 {
                     for x in x0..=x1 {
-                        let top = self.tops[x + COLS * z];
+                        let top = self.tops[x + COLS() * z];
                         let mut allowed = top;
                         for (dx, dz) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
                             let nx = (x as i32 + dx) as usize;
                             let nz = (z as i32 + dz) as usize;
-                            allowed = allowed.min(self.tops[nx + COLS * nz] + 2);
+                            allowed = allowed.min(self.tops[nx + COLS() * nz] + 2);
                         }
                         if allowed < top {
                             changes.push((x, z, allowed));
@@ -324,10 +435,11 @@ impl Terrain {
         edit
     }
     pub fn set_column(&mut self, p: Vec2, top: f32) {
-        if let Some((x, z)) = Self::column(p) {
-            let level = (((top - BOTTOM) / Y).round() as i16 - 1).clamp(0, LAYERS as i16 - 1);
-            self.tops[x + COLS * z] = level;
-            for y in 0..LAYERS {
+        if let Some((x, z)) = self.world_column(p) {
+            let level = (((top - BOTTOM) / Y()).round() as i16 - 1).clamp(0, LAYERS() as i16 - 1);
+            self.tops[x + COLS() * z] = level;
+            self.edits.insert(Self::edit_key(p), level);
+            for y in 0..LAYERS() {
                 self.set_raw(x, y, z, y <= level as usize);
             }
             let (c, _) = Self::address(x, 0, z);
@@ -336,60 +448,101 @@ impl Terrain {
         }
     }
     pub fn validate(&self) -> bool {
-        self.chunks.len() == CHUNKS * CHUNKS
-            && self.tops.len() == COLS * COLS
+        self.origin.is_finite()
+            && (self.origin / 8.0).fract().abs().max_element() < 0.0001
+            && self.edits.iter().all(|(key, &top)| {
+                (0..LAYERS() as i16).contains(&top)
+                    && key
+                        .split_once(',')
+                        .is_some_and(|(x, z)| x.parse::<i64>().is_ok() && z.parse::<i64>().is_ok())
+            })
+            && self.chunks.len() == CHUNKS() * CHUNKS()
+            && self.tops.len() == COLS() * COLS()
             && self.chunks.iter().all(|c| {
-                c.bits.len() == CHUNK_CELLS * CHUNK_CELLS * LAYERS / 8
+                c.bits.len() == CHUNK_CELLS * CHUNK_CELLS * LAYERS() / 8
                     && c.checksum == checksum(&c.bits)
             })
-            && self.tops.iter().all(|&t| (0..LAYERS as i16).contains(&t))
-            && (0..COLS * COLS).all(|i| {
-                let x = i % COLS;
-                let z = i / COLS;
+            && self.tops.iter().all(|&t| (0..LAYERS() as i16).contains(&t))
+            && (0..COLS() * COLS()).all(|i| {
+                let x = i % COLS();
+                let z = i / COLS();
                 let top = self.tops[i] as usize;
                 (!Self::protected(x, z) || self.top(x, z) == 2.5)
-                    && (0..LAYERS)
+                    && (0..LAYERS())
                         .all(|y| self.cell(x as isize, y as isize, z as isize) == (y <= top))
             })
     }
 
-    /// Upsample the original schema-2 grid without changing its excavated surfaces.
+    /// Import surface changes from checkpoints made before edits were archived.
+    pub fn remember_loaded_surfaces(&mut self) {
+        for z in 0..COLS() {
+            for x in 0..COLS() {
+                let p = self.world_center(x, z);
+                let generated =
+                    ((height(self.seed, p).clamp(-6.0, 6.0) - BOTTOM) / Y()).ceil() as i16 - 1;
+                let actual = self.tops[x + COLS() * z];
+                if actual != generated {
+                    self.edits.insert(Self::edit_key(p), actual);
+                }
+            }
+        }
+    }
+
+    /// Convert checkpoints to the selected grid, retaining excavated column surfaces.
     pub fn upgrade_resolution(&mut self) -> Result<(), String> {
-        if self.tops.len() != 128 * 128 {
+        let old_cols = match self.tops.len() {
+            16384 => 128,
+            65536 => 256,
+            262144 => 512,
+            _ => return Err("Invalid voxel checkpoint dimensions".into()),
+        };
+        if old_cols == COLS() {
             return Ok(());
         }
-        if self.chunks.len() != 64
-            || self
-                .chunks
-                .iter()
-                .any(|c| c.bits.len() != 2048 || c.checksum != checksum(&c.bits))
+        let old_layers = old_cols / 2;
+        let old_chunk_cells = if old_cols == 128 { 16 } else { CHUNK_CELLS };
+        let old_chunks = old_cols / old_chunk_cells;
+        if self.chunks.len() != old_chunks * old_chunks
+            || self.chunks.iter().any(|c| {
+                c.bits.len() != old_chunk_cells * old_chunk_cells * old_layers / 8
+                    || c.checksum != checksum(&c.bits)
+            })
         {
-            return Err("Invalid legacy voxel checkpoint".into());
+            return Err("Invalid voxel checkpoint chunks".into());
         }
-        for z in 0..128 {
-            for x in 0..128 {
-                let top = self.tops[x + 128 * z];
-                if !(0..64).contains(&top)
-                    || ((x == 0 || z == 0 || x == 127 || z == 127) && top != 41)
-                {
-                    return Err("Invalid legacy terrain surface".into());
+        for z in 0..old_cols {
+            for x in 0..old_cols {
+                let top = self.tops[x + old_cols * z];
+                if !(0..old_layers as i16).contains(&top) {
+                    return Err("Invalid terrain surface".into());
                 }
-                for y in 0..64 {
-                    let bit = x % 16 + 16 * (z % 16 + 16 * y);
-                    let chunk = &self.chunks[x / 16 + 8 * (z / 16)];
+                for y in 0..old_layers {
+                    let bit = x % old_chunk_cells
+                        + old_chunk_cells * (z % old_chunk_cells + old_chunk_cells * y);
+                    let chunk =
+                        &self.chunks[x / old_chunk_cells + old_chunks * (z / old_chunk_cells)];
                     if (chunk.bits[bit / 8] & (1 << (bit % 8)) != 0) != (y <= top as usize) {
-                        return Err("Invalid legacy terrain occupancy".into());
+                        return Err("Invalid terrain occupancy".into());
                     }
                 }
             }
         }
         let mut fine = Self::new(self.seed);
         fine.revision = self.revision;
-        for z in 0..COLS {
-            for x in 0..COLS {
-                let top = 2 * (self.tops[x / 2 + 128 * (z / 2)] + 1) - 1;
-                fine.tops[x + COLS * z] = top;
-                for y in 0..LAYERS {
+        fine.origin = self.origin;
+        fine.edits = self.edits.clone();
+        for z in 0..COLS() {
+            for x in 0..COLS() {
+                let source = self.tops[x * old_cols / COLS() + old_cols * (z * old_cols / COLS())];
+                let top = ((source as usize + 1) * LAYERS() / old_layers).max(1) as i16 - 1;
+                // The protective boundary retains its authored height at either resolution.
+                let top = if Self::protected(x, z) {
+                    ((2.5 - BOTTOM) / Y()).ceil() as i16 - 1
+                } else {
+                    top
+                };
+                fine.tops[x + COLS() * z] = top;
+                for y in 0..LAYERS() {
                     fine.set_raw(x, y, z, y <= top as usize);
                 }
             }

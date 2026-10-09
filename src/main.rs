@@ -12,7 +12,9 @@ mod terrain;
 mod terrain_regression;
 #[cfg(test)]
 mod tests;
+mod trees;
 mod ui;
+mod world;
 
 use glam::Vec2;
 use std::{collections::HashSet, time::Instant};
@@ -37,6 +39,7 @@ struct App {
     settings_open: bool,
     focused: bool,
     last: Instant,
+    fps_frame_seconds: f32,
     notice: String,
     mouse_look_active: bool,
     bot: bool,
@@ -49,9 +52,13 @@ struct App {
     scene: render::SceneCache,
     replay: Option<playtest::Replay>,
     ui_smoke: bool,
+    render_profile: bool,
+    profile_rotate: bool,
+    render_samples: Vec<[f64; 4]>,
 }
 impl App {
     fn new(bot: bool, limit: Option<u32>) -> Self {
+        let settings = settings::Settings::load();
         Self {
             window: None,
             renderer: None,
@@ -62,10 +69,11 @@ impl App {
             yaw: 0.4,
             zoom: 10.0,
             paused: false,
-            settings: settings::Settings::load(),
+            settings,
             settings_open: false,
             focused: true,
             last: Instant::now(),
+            fps_frame_seconds: 1.0 / 60.0,
             notice: String::new(),
             mouse_look_active: false,
             bot,
@@ -78,6 +86,9 @@ impl App {
             scene: render::SceneCache::default(),
             replay: None,
             ui_smoke: false,
+            render_profile: false,
+            profile_rotate: false,
+            render_samples: Vec::new(),
         }
     }
     fn mouse_look_enabled(&self) -> bool {
@@ -115,7 +126,10 @@ impl App {
             return;
         }
         let now = Instant::now();
-        let real_dt = now.duration_since(self.last).as_secs_f32().min(0.1);
+        let frame_seconds = now.duration_since(self.last).as_secs_f32().max(0.000001);
+        self.fps_frame_seconds +=
+            (frame_seconds - self.fps_frame_seconds) * (1.0 - (-frame_seconds / 0.3).exp());
+        let real_dt = frame_seconds.min(0.1);
         self.last = now;
         let dt = if self.bot { 1.0 / 60.0 } else { real_dt };
         let was_shop = self.game.phase == sim::Phase::Shop;
@@ -137,7 +151,7 @@ impl App {
                     el.exit();
                 }
             }
-        } else if self.focused && !self.paused && !self.settings_open {
+        } else if (self.focused || self.render_profile) && !self.paused && !self.settings_open {
             let key = |k| if self.keys.contains(&k) { 1.0 } else { 0.0 };
             if self.mouse_look_enabled() {
                 self.yaw += (key(KeyCode::KeyE) - key(KeyCode::KeyQ)) * dt * 1.8;
@@ -216,13 +230,16 @@ impl App {
                 &mut self.notice,
                 &mut self.settings,
                 &mut self.settings_open,
-                (1.0 / real_dt.max(0.001), &renderer.adapter),
+                (1.0 / self.fps_frame_seconds, &renderer.adapter),
             )
         });
         self.gui
             .as_mut()
             .unwrap()
             .handle_platform_output(window, output.platform_output.clone());
+        if self.render_profile && self.profile_rotate {
+            self.yaw += real_dt * 0.8;
+        }
         let vertices = self.scene.scene_frame(
             &self.game,
             self.yaw,
@@ -243,7 +260,7 @@ impl App {
                 );
             }
         }
-        match renderer.draw(&vertices, &self.ctx, output) {
+        match renderer.draw(&vertices, &self.scene.params, &self.ctx, output) {
             Ok(false) => {
                 if let Err(e) = renderer.resize(window) {
                     eprintln!("Resize failed: {e}");
@@ -258,6 +275,14 @@ impl App {
         }
         // Bounded event retention in human sessions; headless mode writes each event.
         self.game.events.clear();
+        if self.render_profile && self.frames >= 30 {
+            self.render_samples.push([
+                frame_seconds as f64 * 1000.0,
+                self.scene.scene_last_us as f64 / 1000.0,
+                renderer.gpu_ms.unwrap_or(0.0),
+                vertices.len() as f64,
+            ]);
+        }
         if self.ui_smoke && self.frames == 90 {
             if self.game.level("light_frame") != 1
                 || self.game.currency != 85
@@ -280,6 +305,18 @@ impl App {
         }
         self.frames += 1;
         if self.limit.is_some_and(|n| self.frames >= n) {
+            if self.render_profile {
+                fn summary(mut v: Vec<f64>) -> serde_json::Value {
+                    v.sort_by(f64::total_cmp);
+                    serde_json::json!({"mean":v.iter().sum::<f64>()/v.len().max(1) as f64,"p95":v.get(v.len()*95/100),"peak":v.last()})
+                }
+                let report = serde_json::json!({"adapter":renderer.adapter,"resolution":[renderer.extent.width,renderer.extent.height],"frames":self.render_samples.len(),"gpu_timestamp_measured":renderer.gpu_ms.is_some(),"frame_ms":summary(self.render_samples.iter().map(|s|s[0]).collect()),"scene_cpu_ms":summary(self.render_samples.iter().map(|s|s[1]).collect()),"gpu_ms":summary(self.render_samples.iter().map(|s|s[2]).collect()),"vertices":summary(self.render_samples.iter().map(|s|s[3]).collect())});
+                let _ = std::fs::write(
+                    "target/native-render-profile.json",
+                    serde_json::to_vec_pretty(&report).unwrap(),
+                );
+                println!("Native render profile: {report}");
+            }
             println!(
                 "Rendered {} frames on {}; world {:.3}s; phase {:?}; position ({:.1}, {:.1}); ground {:.2}",
                 self.frames,
@@ -407,7 +444,7 @@ impl ApplicationHandler for App {
         if let DeviceEvent::MouseMotion { delta: (dx, _) } = event
             && self.mouse_look_enabled()
         {
-            // Relative horizontal motion orbits around world Y; never enters movement activity.
+            // Relative horizontal motion orbits around world Y(); never enters movement activity.
             self.yaw = (self.yaw + dx as f32 * self.settings.radians_per_pixel())
                 .rem_euclid(std::f32::consts::TAU);
         }
@@ -457,7 +494,18 @@ fn main() {
         app.bot = true;
     }
     app.terrain_walk = args.iter().any(|a| a == "--terrain-walk");
+    if args.iter().any(|a| a == "--tree-demo") {
+        trees::demo(&mut app.game);
+    }
+    if args.iter().any(|a| a == "--ruin-demo") {
+        world::ruin_demo(&mut app.game);
+    }
     app.ui_smoke = args.iter().any(|a| a == "--ui-smoke");
+    app.render_profile = args.iter().any(|a| a == "--render-profile");
+    app.profile_rotate = args.iter().any(|a| a == "--rotate-profile");
+    if args.iter().any(|a| a == "--texture-preview") {
+        app.zoom = 5.0;
+    }
     app.settings_open = args.iter().any(|a| a == "--settings");
     if let Some(path) = replay_path {
         match playtest::Replay::load(std::path::Path::new(path)) {

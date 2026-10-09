@@ -1,0 +1,117 @@
+{
+    "scenario":  "240-frame native terrain walk, first 30 frames excluded, 1280x800, RTX 3060, Vulkan timestamps",
+    "before":  {
+                   "adapter":  "NVIDIA GeForce RTX 3060",
+                   "frame_ms":  {
+                                    "mean":  17.402868540514085,
+                                    "p95":  17.547499388456345,
+                                    "peak":  206.00008964538574
+                                },
+                   "frames":  210,
+                   "gpu_ms":  {
+                                  "mean":  1.2445107809523814,
+                                  "p95":  1.611136,
+                                  "peak":  2.334016
+                              },
+                   "gpu_timestamp_measured":  true,
+                   "resolution":  [
+                                      1280,
+                                      800
+                                  ],
+                   "scene_cpu_ms":  {
+                                        "mean":  8.299542857142857,
+                                        "p95":  8.641,
+                                        "peak":  137.799
+                                    },
+                   "vertices":  {
+                                    "mean":  254512.57142857142,
+                                    "p95":  262986.0,
+                                    "peak":  262986.0
+                                }
+               },
+    "after":  {
+                  "adapter":  "NVIDIA GeForce RTX 3060",
+                  "frame_ms":  {
+                                   "mean":  17.248184313731535,
+                                   "p95":  17.749100923538208,
+                                   "peak":  174.77910220623016
+                               },
+                  "frames":  210,
+                  "gpu_ms":  {
+                                 "mean":  0.5835929904761902,
+                                 "p95":  0.663392,
+                                 "peak":  1.22144
+                             },
+                  "gpu_timestamp_measured":  true,
+                  "resolution":  [
+                                     1280,
+                                     800
+                                 ],
+                  "scene_cpu_ms":  {
+                                       "mean":  5.4409,
+                                       "p95":  5.687,
+                                       "peak":  118.583
+                                   },
+                  "vertices":  {
+                                   "mean":  117131.34285714285,
+                                   "p95":  123672.0,
+                                   "peak":  127050.0
+                               }
+              },
+    "structural_before":  {
+                              "cpu_frame":  {
+                                                "mean_ms":  12.511484166666666,
+                                                "p95_ms":  17.0173,
+                                                "peak_ms":  19.3227
+                                            },
+                              "navigation":  {
+                                                 "mean_ms":  0.444235,
+                                                 "p95_ms":  4.8057,
+                                                 "peak_ms":  6.6443
+                                             },
+                              "navigation_rebuilds":  12,
+                              "physics":  {
+                                              "mean_ms":  0.061665833333333336,
+                                              "p95_ms":  0.1058,
+                                              "peak_ms":  4.2157
+                                          },
+                              "remaining_falling":  0,
+                              "scene":  {
+                                            "mean_ms":  12.004957500000002,
+                                            "p95_ms":  15.2679,
+                                            "peak_ms":  19.3181
+                                        },
+                              "wall_mesh_rebuilds":  91,
+                              "wall_mesh_translations":  453,
+                              "walls":  91
+                          },
+    "structural_after":  {
+                             "cpu_frame":  {
+                                               "mean_ms":  8.417702499999999,
+                                               "p95_ms":  14.138100000000001,
+                                               "peak_ms":  14.9581
+                                           },
+                             "navigation":  {
+                                                "mean_ms":  0.41735833333333333,
+                                                "p95_ms":  4.7775,
+                                                "peak_ms":  5.0616
+                                            },
+                             "navigation_rebuilds":  12,
+                             "physics":  {
+                                             "mean_ms":  0.05993250000000001,
+                                             "p95_ms":  0.0891,
+                                             "peak_ms":  4.1631
+                                         },
+                             "remaining_falling":  0,
+                             "scene":  {
+                                           "mean_ms":  7.9399691666666685,
+                                           "p95_ms":  10.1932,
+                                           "peak_ms":  11.6443
+                                       },
+                             "wall_mesh_rebuilds":  91,
+                             "wall_mesh_translations":  453,
+                             "walls":  91
+                         },
+    "validation":  "47 tests passed; two optional benchmarks ignored by the default suite; structural benchmark also passed",
+    "shadow_method":  "Cached soft terrain-projected approximations, depth-tested without depth writes; no shadow maps or extra render pass"
+}

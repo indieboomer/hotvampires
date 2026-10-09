@@ -183,7 +183,7 @@ pub fn movement(game: &Game, policy: &str) -> Vec2 {
         let d = Vec2::new(angle.cos(), angle.sin());
         let mut future = game.player;
         let mut body = game.player_body.clone();
-        // Observe current terrain by trying the shared controller, rather than assuming a flat XZ map.
+        // Observe current terrain by trying the shared controller, rather than assuming a flat XZ() map.
         for _ in 0..18 {
             crate::controller::advance(
                 &game.terrain,

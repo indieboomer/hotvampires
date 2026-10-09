@@ -1,0 +1,29 @@
+{
+  "adapter": "NVIDIA GeForce RTX 3060",
+  "frame_ms": {
+    "mean": 17.565264304478962,
+    "p95": 17.778199166059494,
+    "peak": 237.72360384464264
+  },
+  "frames": 210,
+  "gpu_ms": {
+    "mean": 1.1170230857142855,
+    "p95": 1.56832,
+    "peak": 1.700768
+  },
+  "gpu_timestamp_measured": true,
+  "resolution": [
+    1280,
+    800
+  ],
+  "scene_cpu_ms": {
+    "mean": 5.33962380952381,
+    "p95": 5.427,
+    "peak": 120.162
+  },
+  "vertices": {
+    "mean": 169792.0,
+    "p95": 175824.0,
+    "peak": 178746.0
+  }
+}
