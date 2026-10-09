@@ -12,10 +12,10 @@ use glam::Vec2;
 use std::{collections::HashSet, time::Instant};
 use winit::{
     application::ApplicationHandler,
-    event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent},
+    event::{DeviceEvent, DeviceId, ElementState, MouseButton, MouseScrollDelta, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowId},
+    window::{CursorGrabMode, Window, WindowId},
 };
 struct App {
     window: Option<Window>,
@@ -30,8 +30,7 @@ struct App {
     focused: bool,
     last: Instant,
     notice: String,
-    mouse_middle: bool,
-    cursor: f64,
+    orbit_buttons: HashSet<MouseButton>,
     bot: bool,
     bot_input: Vec2,
     bot_frame: u32,
@@ -56,8 +55,7 @@ impl App {
             focused: true,
             last: Instant::now(),
             notice: String::new(),
-            mouse_middle: false,
-            cursor: 0.0,
+            orbit_buttons: HashSet::new(),
             bot,
             bot_input: Vec2::ZERO,
             bot_frame: 0,
@@ -68,7 +66,19 @@ impl App {
             ui_smoke: false,
         }
     }
+    fn release_orbit(&mut self) {
+        self.orbit_buttons.clear();
+        if let Some(window) = &self.window {
+            let _ = window.set_cursor_grab(CursorGrabMode::None);
+            window.set_cursor_visible(true);
+        }
+    }
     fn redraw(&mut self, el: &ActiveEventLoop) {
+        if !self.orbit_buttons.is_empty()
+            && (self.paused || !self.focused || self.game.phase != sim::Phase::Combat)
+        {
+            self.release_orbit();
+        }
         let window = self.window.as_ref().unwrap();
         if window.inner_size().width == 0 || window.inner_size().height == 0 {
             self.last = Instant::now();
@@ -272,7 +282,7 @@ impl ApplicationHandler for App {
             WindowEvent::Focused(f) => {
                 self.focused = f;
                 self.keys.clear();
-                self.mouse_middle = false;
+                self.release_orbit();
                 self.last = Instant::now();
             }
             WindowEvent::KeyboardInput { event, .. } => {
@@ -305,16 +315,27 @@ impl ApplicationHandler for App {
                     }
                 }
             }
-            WindowEvent::MouseInput {
-                button: MouseButton::Middle,
-                state,
-                ..
-            } => self.mouse_middle = state == ElementState::Pressed,
-            WindowEvent::CursorMoved { position, .. } => {
-                if self.mouse_middle {
-                    self.yaw += (position.x - self.cursor) as f32 * 0.006;
+            WindowEvent::MouseInput { button, state, .. }
+                if matches!(button, MouseButton::Right | MouseButton::Middle) =>
+            {
+                if state == ElementState::Released {
+                    self.orbit_buttons.remove(&button);
+                    if self.orbit_buttons.is_empty() {
+                        self.release_orbit();
+                    }
+                } else if self.focused
+                    && !self.paused
+                    && self.game.phase == sim::Phase::Combat
+                    && !self.ctx.wants_pointer_input()
+                {
+                    self.orbit_buttons.insert(button);
+                    if let Some(window) = &self.window {
+                        let _ = window
+                            .set_cursor_grab(CursorGrabMode::Locked)
+                            .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined));
+                        window.set_cursor_visible(false);
+                    }
                 }
-                self.cursor = position.x;
             }
             WindowEvent::MouseWheel { delta, .. } => {
                 let amount = match delta {
@@ -324,6 +345,17 @@ impl ApplicationHandler for App {
                 self.zoom = (self.zoom - amount).clamp(5.0, 16.0);
             }
             _ => {}
+        }
+    }
+    fn device_event(&mut self, _el: &ActiveEventLoop, _id: DeviceId, event: DeviceEvent) {
+        if let DeviceEvent::MouseMotion { delta: (dx, _) } = event
+            && !self.orbit_buttons.is_empty()
+            && self.focused
+            && !self.paused
+            && self.game.phase == sim::Phase::Combat
+        {
+            // Relative horizontal motion orbits around world Y; never enters movement activity.
+            self.yaw = (self.yaw + dx as f32 * 0.006).rem_euclid(std::f32::consts::TAU);
         }
     }
 }

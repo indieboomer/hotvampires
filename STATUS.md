@@ -1,5 +1,7 @@
 # Current status
 
+Mouse camera update: right/middle drag uses relative horizontal motion to orbit around world Y, with cursor capture released on pause, focus loss and leaving combat. Combat colors smoothly desaturate with the shared time scale; the UI and shop retain their colors.
+
 A playable first vertical slice exists: direct Rust/ash Vulkan rendering, camera-relative controls, nonzero slow motion, automatic combat, three weapons, six passive skills, twelve items, eight waves and a final elite, working between-wave shop, checkpoint saves, destructible cover, localized enemy chips and bounded breakup fragments. The indestructible ground has no destruction API. Cover occupancy is shared by collision, visibility and deterministic obstacle-clearing behavior; it persists through shops and loading.
 
 The implementation is an early prototype, not completion of every README acceptance criterion. Placeholder bodies are rigid boxes with fine 0.08-unit head cells; walls currently use coarser 0.2-unit cells. At 1280×800 the screenshots show readable characters and a persisted breach. A final 1080p fine-cell art pass remains necessary.

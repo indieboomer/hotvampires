@@ -878,6 +878,18 @@ impl SceneCache {
             let mut p = matrix.transform_point3(Vec3::from_array(v.position));
             p.y = -p.y;
             v.position = p.to_array();
+            if game.phase == crate::sim::Phase::Combat {
+                let activity = if game.config.min_scale < 1.0 {
+                    (game.scale - game.config.min_scale) / (1.0 - game.config.min_scale)
+                } else {
+                    1.0
+                };
+                let saturation = 0.08 + 0.92 * activity.clamp(0.0, 1.0);
+                let luminance = v.color[0] * 0.2126 + v.color[1] * 0.7152 + v.color[2] * 0.0722;
+                v.color = v
+                    .color
+                    .map(|channel| luminance + (channel - luminance) * saturation);
+            }
         }
         mesh
     }
