@@ -16,12 +16,12 @@ pub struct Settings {
     pub starting_blend_radius: f32,
 }
 
-pub const XZ: f32 = 0.5;
-pub const Y: f32 = 0.25;
+pub const XZ: f32 = 0.25;
+pub const Y: f32 = 0.125;
 pub const BOTTOM: f32 = -8.0;
-pub const COLS: usize = 128;
-pub const LAYERS: usize = 64;
-pub const CHUNK_CELLS: usize = 16;
+pub const COLS: usize = 256;
+pub const LAYERS: usize = 128;
+pub const CHUNK_CELLS: usize = 32;
 pub const CHUNKS: usize = COLS / CHUNK_CELLS;
 pub const HALF: f32 = COLS as f32 * XZ * 0.5;
 
@@ -143,7 +143,7 @@ impl Terrain {
         t
     }
     pub fn protected(x: usize, z: usize) -> bool {
-        x == 0 || z == 0 || x == COLS - 1 || z == COLS - 1
+        x < 2 || z < 2 || x >= COLS - 2 || z >= COLS - 2
     }
     pub fn column_center(x: usize, z: usize) -> Vec2 {
         Vec2::new((x as f32 + 0.5) * XZ - HALF, (z as f32 + 0.5) * XZ - HALF)
@@ -200,7 +200,7 @@ impl Terrain {
         Self::column(p).map_or(BOTTOM + Y, |(x, z)| self.top(x, z))
     }
     pub fn bounds(&self, p: Vec2, r: f32) -> bool {
-        p.abs().max_element() < HALF - XZ - r
+        p.abs().max_element() < HALF - 0.5 - r
     }
     pub fn stamp(&self, cx: usize, cz: usize) -> u64 {
         let mut h = self.chunks[cx + CHUNKS * cz].checksum;
@@ -290,7 +290,7 @@ impl Terrain {
         // Bevel an ordinary crater by removing additional rim voxels, never by adding ramps.
         // Bounded erosion region/passes means repeated deep pits can honestly be impassable.
         if edit.removed > 0 && strength <= 1.0 {
-            for _ in 0..8 {
+            for _ in 0..16 {
                 let mut changes = Vec::new();
                 for z in z0..=z1 {
                     for x in x0..=x1 {
@@ -351,6 +351,54 @@ impl Terrain {
                     && (0..LAYERS)
                         .all(|y| self.cell(x as isize, y as isize, z as isize) == (y <= top))
             })
+    }
+
+    /// Upsample the original schema-2 grid without changing its excavated surfaces.
+    pub fn upgrade_resolution(&mut self) -> Result<(), String> {
+        if self.tops.len() != 128 * 128 {
+            return Ok(());
+        }
+        if self.chunks.len() != 64
+            || self
+                .chunks
+                .iter()
+                .any(|c| c.bits.len() != 2048 || c.checksum != checksum(&c.bits))
+        {
+            return Err("Invalid legacy voxel checkpoint".into());
+        }
+        for z in 0..128 {
+            for x in 0..128 {
+                let top = self.tops[x + 128 * z];
+                if !(0..64).contains(&top)
+                    || ((x == 0 || z == 0 || x == 127 || z == 127) && top != 41)
+                {
+                    return Err("Invalid legacy terrain surface".into());
+                }
+                for y in 0..64 {
+                    let bit = x % 16 + 16 * (z % 16 + 16 * y);
+                    let chunk = &self.chunks[x / 16 + 8 * (z / 16)];
+                    if (chunk.bits[bit / 8] & (1 << (bit % 8)) != 0) != (y <= top as usize) {
+                        return Err("Invalid legacy terrain occupancy".into());
+                    }
+                }
+            }
+        }
+        let mut fine = Self::new(self.seed);
+        fine.revision = self.revision;
+        for z in 0..COLS {
+            for x in 0..COLS {
+                let top = 2 * (self.tops[x / 2 + 128 * (z / 2)] + 1) - 1;
+                fine.tops[x + COLS * z] = top;
+                for y in 0..LAYERS {
+                    fine.set_raw(x, y, z, y <= top as usize);
+                }
+            }
+        }
+        for c in &mut fine.chunks {
+            c.checksum = checksum(&c.bits);
+        }
+        *self = fine;
+        Ok(())
     }
 }
 fn checksum(bytes: &[u8]) -> u64 {

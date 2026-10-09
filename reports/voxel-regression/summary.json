@@ -1,11 +1,11 @@
 {
-  "build": "2fe3988af8d52035",
+  "build": "28fd2dbf573499bc",
   "passed": 10,
   "privileged_fixtures": true,
   "rows": [
     {
       "detail": "ascent x 7.73, y 1.50; descended to Vec2(-6.3598194, 0.0); grounding 0, penetration 0",
-      "elapsed_ms": 35.554700000000004,
+      "elapsed_ms": 233.991,
       "metrics": {
         "cover_removed": 0,
         "dealt": 0.0,
@@ -33,14 +33,14 @@
         "unreachable_reports": 0,
         "vertical_spikes": 0
       },
-      "navigation_update_us": 21976,
+      "navigation_update_us": 91136,
       "passed": true,
       "scenario": "staircase ascent/descent",
       "terrain_update_us": 0
     },
     {
-      "detail": "diagonal Vec2(9.149453, 9.149453), y 1.50, stable pauses; grounding 0, penetration 0",
-      "elapsed_ms": 30.424400000000002,
+      "detail": "diagonal Vec2(9.150103, 9.150103), y 1.50, stable pauses; grounding 0, penetration 0",
+      "elapsed_ms": 216.88989999999998,
       "metrics": {
         "cover_removed": 0,
         "dealt": 0.0,
@@ -68,14 +68,14 @@
         "unreachable_reports": 0,
         "vertical_spikes": 0
       },
-      "navigation_update_us": 17631,
+      "navigation_update_us": 73218,
       "passed": true,
       "scenario": "diagonal slope, stop/start, chunk seams",
       "terrain_update_us": 0
     },
     {
-      "detail": "floor -2, slow fall -0.019, escaped Vec2(10.90883, 0.0); grounding 0, penetration 0",
-      "elapsed_ms": 21.2166,
+      "detail": "floor -2, slow fall -0.019, escaped Vec2(10.999388, 0.0); grounding 0, penetration 0",
+      "elapsed_ms": 96.7398,
       "metrics": {
         "cover_removed": 0,
         "dealt": 0.0,
@@ -92,7 +92,7 @@
         "penetration_errors": 0,
         "purchases": 0,
         "received": 0.0,
-        "removed_voxels": 776,
+        "removed_voxels": 5940,
         "rerolls": 0,
         "snapshots": [],
         "spent": 0,
@@ -103,14 +103,14 @@
         "unreachable_reports": 0,
         "vertical_spikes": 0
       },
-      "navigation_update_us": 11315,
+      "navigation_update_us": 49467,
       "passed": true,
       "scenario": "grenade beneath player, minimum-time fall, escape",
-      "terrain_update_us": 43
+      "terrain_update_us": 176
     },
     {
-      "detail": "crossed bowl y -1.75, exit Vec2(9.785162, 0.0); grounding 0, penetration 0",
-      "elapsed_ms": 23.1638,
+      "detail": "crossed bowl y -1.63, exit Vec2(9.958785, 0.0); grounding 0, penetration 0",
+      "elapsed_ms": 109.9014,
       "metrics": {
         "cover_removed": 0,
         "dealt": 0.0,
@@ -127,7 +127,7 @@
         "penetration_errors": 0,
         "purchases": 0,
         "received": 0.0,
-        "removed_voxels": 776,
+        "removed_voxels": 5940,
         "rerolls": 0,
         "snapshots": [],
         "spent": 0,
@@ -138,14 +138,14 @@
         "unreachable_reports": 0,
         "vertical_spikes": 0
       },
-      "navigation_update_us": 12889,
+      "navigation_update_us": 62018,
       "passed": true,
       "scenario": "ordinary crater enter and leave",
-      "terrain_update_us": 29
+      "terrain_update_us": 165
     },
     {
       "detail": "12/12 enemies walked out; nav rebuilds 27; grounding 0, penetration 0",
-      "elapsed_ms": 47.6936,
+      "elapsed_ms": 155.8097,
       "metrics": {
         "cover_removed": 0,
         "dealt": 0.0,
@@ -157,12 +157,12 @@
         "heals": 0,
         "kills": 0,
         "navigation_rebuilds": 27,
-        "no_progress_seconds": 9.808269500732422,
+        "no_progress_seconds": 9.849935531616211,
         "overloads": 0,
         "penetration_errors": 0,
         "purchases": 0,
         "received": 0.0,
-        "removed_voxels": 776,
+        "removed_voxels": 5940,
         "rerolls": 0,
         "snapshots": [],
         "spent": 0,
@@ -173,31 +173,31 @@
         "unreachable_reports": 0,
         "vertical_spikes": 0
       },
-      "navigation_update_us": 19849,
+      "navigation_update_us": 82238,
       "passed": true,
       "scenario": "enemy group loses support and navigates crater exit",
-      "terrain_update_us": 28
+      "terrain_update_us": 159
     },
     {
-      "detail": "overlap floor -7.75; honest trapped pit diagnosed 3 times; grounding 0, penetration 0",
-      "elapsed_ms": 19.0115,
+      "detail": "overlap floor -7.88; honest trapped pit diagnosed 3 times; grounding 0, penetration 0",
+      "elapsed_ms": 70.9263,
       "metrics": {
         "cover_removed": 0,
         "dealt": 0.0,
-        "debris_peak": 333,
-        "dirty_chunks": 20,
+        "debris_peak": 495,
+        "dirty_chunks": 28,
         "earned": 0,
         "falls": 1,
         "grounding_errors": 0,
         "heals": 0,
         "kills": 0,
         "navigation_rebuilds": 2,
-        "no_progress_seconds": 9.77493667602539,
+        "no_progress_seconds": 9.724937438964844,
         "overloads": 0,
         "penetration_errors": 0,
         "purchases": 0,
         "received": 0.0,
-        "removed_voxels": 10772,
+        "removed_voxels": 80424,
         "rerolls": 0,
         "snapshots": [],
         "spent": 0,
@@ -208,14 +208,14 @@
         "unreachable_reports": 3,
         "vertical_spikes": 0
       },
-      "navigation_update_us": 4241,
+      "navigation_update_us": 16367,
       "passed": true,
       "scenario": "overlapping blasts, deep blocked pit, bedrock",
-      "terrain_update_us": 645
+      "terrain_update_us": 1554
     },
     {
       "detail": "occluded fade 1.000, restored 0.000; simulation unchanged; grounding 0, penetration 0",
-      "elapsed_ms": 15.6148,
+      "elapsed_ms": 53.9147,
       "metrics": {
         "cover_removed": 0,
         "dealt": 0.0,
@@ -232,7 +232,7 @@
         "penetration_errors": 0,
         "purchases": 0,
         "received": 0.0,
-        "removed_voxels": 776,
+        "removed_voxels": 5940,
         "rerolls": 0,
         "snapshots": [],
         "spent": 0,
@@ -246,11 +246,11 @@
       "navigation_update_us": 0,
       "passed": true,
       "scenario": "camera rim orbit, partial body occlusion, real-time transitions",
-      "terrain_update_us": 27
+      "terrain_update_us": 215
     },
     {
       "detail": "height projectile hit 1, structure covered target 2; grounding 0, penetration 0",
-      "elapsed_ms": 14.4478,
+      "elapsed_ms": 68.1909,
       "metrics": {
         "cover_removed": 0,
         "dealt": 30.0,
@@ -267,7 +267,7 @@
         "penetration_errors": 0,
         "purchases": 0,
         "received": 0.0,
-        "removed_voxels": 776,
+        "removed_voxels": 5940,
         "rerolls": 0,
         "snapshots": [],
         "spent": 0,
@@ -278,54 +278,54 @@
         "unreachable_reports": 0,
         "vertical_spikes": 0
       },
-      "navigation_update_us": 4247,
+      "navigation_update_us": 19050,
       "passed": true,
       "scenario": "combat across elevations and terrain cover",
-      "terrain_update_us": 26
+      "terrain_update_us": 162
     },
     {
-      "detail": "automatic crater plus 6 edits; 300-enemy slowed load, debris peak 716; grounding 0, penetration 0",
-      "elapsed_ms": 77.7403,
+      "detail": "automatic crater plus 7 edits; 300-enemy slowed load, debris peak 764; grounding 0, penetration 0",
+      "elapsed_ms": 205.44480000000001,
       "metrics": {
         "cover_removed": 0,
-        "dealt": 1494.0,
-        "debris_peak": 716,
-        "dirty_chunks": 24,
+        "dealt": 1422.0,
+        "debris_peak": 764,
+        "dirty_chunks": 28,
         "earned": 0,
-        "falls": 341,
+        "falls": 296,
         "grounding_errors": 0,
         "heals": 0,
         "kills": 0,
-        "navigation_rebuilds": 13,
-        "no_progress_seconds": 0.03333333507180214,
+        "navigation_rebuilds": 14,
+        "no_progress_seconds": 0.0,
         "overloads": 0,
         "penetration_errors": 0,
         "purchases": 0,
         "received": 0.0,
-        "removed_voxels": 9578,
+        "removed_voxels": 70537,
         "rerolls": 0,
         "snapshots": [],
         "spent": 0,
         "standing": 6.000023365020752,
         "stuck_reports": 0,
-        "terrain_edits": 6,
+        "terrain_edits": 7,
         "trapped_reports": 0,
         "unreachable_reports": 0,
         "vertical_spikes": 0
       },
-      "navigation_update_us": 12919,
+      "navigation_update_us": 80019,
       "passed": true,
       "scenario": "automatic grenade, overlapping slow-motion/high-load explosions",
-      "terrain_update_us": 304
+      "terrain_update_us": 1989
     },
     {
       "detail": "18 edits, bit-exact save/load through shop to wave 2; grounding 0, penetration 0",
-      "elapsed_ms": 61.2006,
+      "elapsed_ms": 300.65930000000003,
       "metrics": {
         "cover_removed": 0,
         "dealt": 0.0,
         "debris_peak": 1152,
-        "dirty_chunks": 55,
+        "dirty_chunks": 66,
         "earned": 0,
         "falls": 1,
         "grounding_errors": 0,
@@ -337,7 +337,7 @@
         "penetration_errors": 0,
         "purchases": 0,
         "received": 0.0,
-        "removed_voxels": 17032,
+        "removed_voxels": 151350,
         "rerolls": 0,
         "snapshots": [],
         "spent": 0,
@@ -351,7 +351,7 @@
       "navigation_update_us": 0,
       "passed": true,
       "scenario": "extensive excavation checkpoint, shop/wave retention and new run",
-      "terrain_update_us": 685
+      "terrain_update_us": 4450
     }
   ],
   "total": 10

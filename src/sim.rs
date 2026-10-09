@@ -1156,6 +1156,7 @@ impl Game {
             ));
             g.schema = 2;
         }
+        g.terrain.upgrade_resolution()?;
         if !g.terrain.validate()
             || !g.physics.validate()
             || !g.terrain.bounds(g.player, g.physics.radius)

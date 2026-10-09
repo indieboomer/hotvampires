@@ -128,7 +128,12 @@ impl Navigation {
                     continue;
                 }
                 let dh = self.heights[i] - self.heights[n];
-                let run = if dx != 0 && dz != 0 { 0.707 } else { 0.5 };
+                let run = crate::terrain::XZ
+                    * if dx != 0 && dz != 0 {
+                        std::f32::consts::SQRT_2
+                    } else {
+                        1.0
+                    };
                 if dh.abs() > c.step_height
                     || dh.abs() / run > c.max_slope_degrees.to_radians().tan()
                 {
@@ -168,7 +173,12 @@ impl Navigation {
                     continue;
                 }
                 let n = nx as usize + COLS * nz as usize;
-                let run = if dx != 0 && dz != 0 { 0.707 } else { 0.5 };
+                let run = crate::terrain::XZ
+                    * if dx != 0 && dz != 0 {
+                        std::f32::consts::SQRT_2
+                    } else {
+                        1.0
+                    };
                 let dh = (self.heights[n] - self.heights[i]).abs();
                 let corner = dx != 0
                     && dz != 0

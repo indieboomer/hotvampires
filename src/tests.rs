@@ -358,8 +358,8 @@ fn large_ledge_blocks_and_rounded_controller_slides_without_tunneling() {
     g.walls.clear();
     g.spawn = 1e6;
     g.build.clear();
-    for z in 58..70 {
-        for x in 66..72 {
+    for z in 116..140 {
+        for x in 132..144 {
             g.terrain
                 .set_column(crate::terrain::Terrain::column_center(x, z), 2.0);
         }
@@ -403,13 +403,65 @@ fn corrupted_voxel_checkpoint_is_rejected() {
     assert!(Game::load(path).is_err());
 }
 #[test]
+fn smaller_voxels_preserve_world_dimensions_and_legacy_excavation() {
+    use crate::terrain::{COLS, Chunk, LAYERS, Terrain, XZ, Y};
+    assert_eq!(XZ, 0.25);
+    assert_eq!(Y, 0.125);
+    assert_eq!(COLS as f32 * XZ, 64.0);
+    assert_eq!(LAYERS as f32 * Y, 16.0);
+    let mut g = shop();
+    let mut old = Terrain {
+        seed: g.seed,
+        revision: 7,
+        chunks: vec![
+            Chunk {
+                bits: vec![0; 2048],
+                checksum: 0
+            };
+            64
+        ],
+        tops: vec![31; 128 * 128],
+    };
+    for z in 0..128 {
+        for x in 0..128 {
+            let top = if x == 0 || z == 0 || x == 127 || z == 127 {
+                41
+            } else if (60..68).contains(&x) && (60..68).contains(&z) {
+                23
+            } else {
+                31
+            };
+            old.tops[x + 128 * z] = top;
+            for y in 0..=top as usize {
+                let bit = x % 16 + 16 * (z % 16 + 16 * y);
+                old.chunks[x / 16 + 8 * (z / 16)].bits[bit / 8] |= 1 << (bit % 8);
+            }
+        }
+    }
+    for chunk in &mut old.chunks {
+        chunk.checksum = chunk.bits.iter().fold(0xcbf29ce484222325u64, |h, &b| {
+            (h ^ b as u64).wrapping_mul(0x100000001b3)
+        });
+    }
+    g.terrain = old;
+    g.player_body = crate::controller::Body::at(-2.0);
+    let path = std::path::Path::new("target/test-save/coarse.json");
+    g.save(path).unwrap();
+    let loaded = Game::load(path).unwrap();
+    assert!(loaded.terrain.validate());
+    assert_eq!(loaded.terrain.revision, 7);
+    assert_eq!(loaded.terrain.height(Vec2::ZERO), -2.0);
+    assert_eq!(loaded.terrain.height(Vec2::splat(4.0)), 0.0);
+    assert_eq!(loaded.terrain.height(Vec2::new(-31.75, 0.0)), 2.5);
+}
+#[test]
 fn quarter_metre_stair_has_continuous_physical_capsule_contact() {
     let mut g = game();
     g.walls.clear();
     g.spawn = 1e6;
     g.build.clear();
-    for z in 60..68 {
-        for x in 66..74 {
+    for z in 120..136 {
+        for x in 132..148 {
             g.terrain
                 .set_column(crate::terrain::Terrain::column_center(x, z), 0.25);
         }
