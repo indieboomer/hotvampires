@@ -1,4 +1,4 @@
-param([switch]$Shop,[switch]$NativePurchase,[switch]$Still,[switch]$Terrain,[switch]$Settings,[string]$Executable='target/iteration/debug/hot-vampires.exe')
+param([switch]$Shop,[switch]$NativePurchase,[switch]$Still,[switch]$Terrain,[switch]$Settings,[switch]$Crater,[string]$Executable='target/iteration/debug/hot-vampires.exe')
 $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $project
@@ -12,12 +12,18 @@ public static class GameWindow {
  [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h,out Rect r);
  [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h,ref Point p);
  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+ [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h,IntPtr dc,uint flags);
  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h,uint m,IntPtr w,IntPtr l);
  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y);
  [DllImport("user32.dll")] public static extern void mouse_event(uint flags,uint x,uint y,uint data,UIntPtr extra);
 }
 '@
-$arguments = if ($Settings) { @('--settings','--frames','1500') } elseif ($Shop) { @('--checkpoint','reports/verified/mobile-11-shop.json','--frames','1500') } elseif ($Terrain) { @('--terrain-walk','--frames','2400') } elseif ($Still) { @('--frames','1500') } else { @('--bot','--frames','1500') }
+function Capture-GameClient($graphics,$handle) {
+ $captureDc = $graphics.GetHdc()
+ try { if (-not [GameWindow]::PrintWindow($handle,$captureDc,3)) { throw 'Native client capture failed' } }
+ finally { $graphics.ReleaseHdc($captureDc) }
+}
+$arguments = if ($Crater) { @('--crater-demo','--frames','1800') } elseif ($Settings) { @('--settings','--frames','1500') } elseif ($Shop) { @('--checkpoint','reports/verified/mobile-11-shop.json','--frames','1500') } elseif ($Terrain) { @('--terrain-walk','--frames','2400') } elseif ($Still) { @('--frames','1500') } else { @('--bot','--frames','1500') }
 $process = Start-Process -FilePath "$project/$Executable" -ArgumentList $arguments -WorkingDirectory $project -WindowStyle Hidden -PassThru -RedirectStandardOutput "$project/target/visual-stdout.txt" -RedirectStandardError "$project/target/visual-stderr.txt"
 try {
  Start-Sleep -Seconds 2
@@ -33,13 +39,25 @@ try {
  [void][GameWindow]::ClientToScreen($handle,[ref]$point)
  $bitmap = New-Object System.Drawing.Bitmap ($rect.Right-$rect.Left),($rect.Bottom-$rect.Top)
  $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
- $graphics.CopyFromScreen($point.X,$point.Y,0,0,$bitmap.Size)
+ Capture-GameClient $graphics $handle
  New-Item -ItemType Directory -Path reports/visual -Force | Out-Null
- $name = if ($Settings) { 'settings' } elseif ($Shop) { 'shop' } elseif ($Terrain) { 'terrain' } elseif ($Still) { 'slow-motion' } else { 'combat' }
+ $name = if ($Crater) { 'crater' } elseif ($Settings) { 'settings' } elseif ($Shop) { 'shop' } elseif ($Terrain) { 'terrain' } elseif ($Still) { 'slow-motion' } else { 'combat' }
  $bitmap.Save("$project/reports/visual/$name.png")
  $graphics.Dispose()
  $bitmap.Dispose()
  Write-Output "Captured $name client area: $($rect.Right)x$($rect.Bottom)"
+ if ($Crater) {
+  foreach ($shot in 2..4) {
+   Start-Sleep -Seconds 3
+   $bitmap = New-Object System.Drawing.Bitmap ($rect.Right-$rect.Left),($rect.Bottom-$rect.Top)
+   $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+   Capture-GameClient $graphics $handle
+   $bitmap.Save("$project/reports/visual/crater-$shot.png")
+   $graphics.Dispose()
+   $bitmap.Dispose()
+  }
+  Write-Output 'Captured crater traversal/orbit sequence (4 frames)'
+ }
  if ($Shop -and $NativePurchase) {
   # Exercise the actual egui button using native client mouse messages.
   [void][GameWindow]::SetCursorPos($point.X+672,$point.Y+407)
@@ -54,7 +72,7 @@ try {
   Write-Output 'Live UI purchase verified: Light Frame, 105 -> 85 coins, persisted checkpoint'
   $bitmap = New-Object System.Drawing.Bitmap ($rect.Right-$rect.Left),($rect.Bottom-$rect.Top)
   $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-  $graphics.CopyFromScreen($point.X,$point.Y,0,0,$bitmap.Size)
+  Capture-GameClient $graphics $handle
   $bitmap.Save("$project/reports/visual/shop-purchase.png")
   $graphics.Dispose()
   $bitmap.Dispose()

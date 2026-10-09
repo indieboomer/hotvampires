@@ -1,4 +1,7 @@
+mod camera;
 mod content;
+mod controller;
+mod navigation;
 mod playtest;
 mod render;
 mod settings;
@@ -6,6 +9,7 @@ mod shop;
 mod sim;
 mod spatial;
 mod terrain;
+mod terrain_regression;
 #[cfg(test)]
 mod tests;
 mod ui;
@@ -37,6 +41,7 @@ struct App {
     mouse_look_active: bool,
     bot: bool,
     terrain_walk: bool,
+    crater_demo: bool,
     bot_input: Vec2,
     bot_frame: u32,
     frames: u32,
@@ -65,6 +70,7 @@ impl App {
             mouse_look_active: false,
             bot,
             terrain_walk: false,
+            crater_demo: false,
             bot_input: Vec2::ZERO,
             bot_frame: 0,
             frames: 0,
@@ -141,7 +147,17 @@ impl App {
                     playtest::shop_actions(&mut self.game, "mobile");
                 }
                 if self.bot_frame.is_multiple_of(9) {
-                    self.bot_input = if self.terrain_walk {
+                    self.bot_input = if self.crater_demo {
+                        if self.bot_frame < 360 {
+                            Vec2::ZERO
+                        } else if self.bot_frame < 540 {
+                            Vec2::X
+                        } else if self.bot_frame < 720 {
+                            -Vec2::X
+                        } else {
+                            playtest::movement(&self.game, "mobile")
+                        }
+                    } else if self.terrain_walk {
                         // A clear diagonal route past the authored starting ruins.
                         Vec2::new(1.0, -1.0).normalize()
                     } else {
@@ -207,12 +223,26 @@ impl App {
             .as_mut()
             .unwrap()
             .handle_platform_output(window, output.platform_output.clone());
-        let vertices = self.scene.scene(
+        let vertices = self.scene.scene_frame(
             &self.game,
             self.yaw,
             self.zoom,
             renderer.extent.width as f32 / renderer.extent.height as f32,
+            real_dt,
         );
+        debug_assert!(self.scene.synchronized(&self.game));
+        if self.crater_demo {
+            terrain_regression::audit(&mut self.game);
+            self.yaw += real_dt * 0.6;
+            if self.frames.is_multiple_of(60) {
+                let _ = std::fs::create_dir_all("reports/visual");
+                let report = serde_json::json!({"frames":self.frames,"world":self.game.world,"real":self.game.real,"player":self.game.player,"body_y":self.game.player_body.y,"grounded":self.game.player_body.grounded,"terrain_revision":self.game.terrain.revision,"mesh_rebuilds":self.scene.mesh_rebuilds,"mesh_update_ms":self.scene.mesh_us as f64/1000.0,"maximum_mesh_update_ms":self.scene.mesh_peak_us as f64/1000.0,"maximum_scene_generation_ms":self.scene.scene_peak_us as f64/1000.0,"collision_render_synchronized":self.scene.synchronized(&self.game),"camera_fade":self.scene.camera.fade,"maximum_follow_change":self.scene.camera.jitter,"metrics":self.game.metrics,"gpu_timestamp_measured":false});
+                let _ = std::fs::write(
+                    "reports/visual/render-diagnostics.json",
+                    serde_json::to_vec_pretty(&report).unwrap(),
+                );
+            }
+        }
         match renderer.draw(&vertices, &self.ctx, output) {
             Ok(false) => {
                 if let Err(e) = renderer.resize(window) {
@@ -258,7 +288,7 @@ impl App {
                 self.game.phase,
                 self.game.player.x,
                 self.game.player.y,
-                crate::terrain::height(self.game.seed, self.game.player)
+                self.game.terrain.height(self.game.player)
             );
             el.exit();
         } else {
@@ -276,7 +306,7 @@ impl ApplicationHandler for App {
         let window = el
             .create_window(
                 Window::default_attributes()
-                    .with_title("Hot Vampires — Rust / Vulkan")
+                    .with_title("Hot Vampires - Rust / Vulkan")
                     .with_inner_size(winit::dpi::LogicalSize::new(1280.0, 800.0)),
             )
             .unwrap();
@@ -404,7 +434,7 @@ fn main() {
             }
             return;
         }
-        let result=match args.get(1).map(String::as_str){Some("run")=>playtest::run(&args),Some("compare")=>playtest::compare(&args),Some("stress")=>playtest::stress(),_=>Err("Use playtest run [--config path] --output directory, playtest compare --baseline directory --candidate directory, playtest replay --run path [--render], or playtest stress".into())};
+        let result=match args.get(1).map(String::as_str){Some("run")=>playtest::run(&args),Some("compare")=>playtest::compare(&args),Some("stress")=>playtest::stress(),Some("terrain")=>terrain_regression::run(),_=>Err("Use playtest run [--config path] --output directory, playtest compare --baseline directory --candidate directory, playtest replay --run path [--render], or playtest stress".into())};
         if let Err(e) = result {
             eprintln!("{e}");
             std::process::exit(1);
@@ -421,6 +451,11 @@ fn main() {
         args.iter().any(|a| a == "--bot" || a == "--terrain-walk"),
         limit,
     );
+    app.crater_demo = args.iter().any(|a| a == "--crater-demo");
+    if app.crater_demo {
+        terrain_regression::demo(&mut app.game);
+        app.bot = true;
+    }
     app.terrain_walk = args.iter().any(|a| a == "--terrain-walk");
     app.ui_smoke = args.iter().any(|a| a == "--ui-smoke");
     app.settings_open = args.iter().any(|a| a == "--settings");

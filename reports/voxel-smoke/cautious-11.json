@@ -1,0 +1,124 @@
+{
+  "build_id": "2fe3988af8d52035",
+  "data_hash": "b4b7009f9294c5e4",
+  "seed": 11,
+  "policy": "cautious",
+  "policy_version": "directions-v2-terrain/0.15s",
+  "outcome": "victory",
+  "virtual_seconds": 354.141,
+  "world_seconds": 279.9537,
+  "wave": 8,
+  "hp": 65.0,
+  "currency": 335,
+  "metrics": {
+    "terrain_edits": 96,
+    "removed_voxels": 101841,
+    "dirty_chunks": 310,
+    "falls": 139,
+    "no_progress_seconds": 0.058333334,
+    "stuck_reports": 0,
+    "unreachable_reports": 11,
+    "grounding_errors": 0,
+    "penetration_errors": 0,
+    "vertical_spikes": 0,
+    "navigation_rebuilds": 1430,
+    "trapped_reports": 3,
+    "kills": 238,
+    "earned": 1190,
+    "spent": 855,
+    "purchases": 28,
+    "rerolls": 4,
+    "heals": 0,
+    "dealt": 8139.626,
+    "received": 21.987179,
+    "cover_removed": 765,
+    "debris_peak": 504,
+    "standing": 76.35183,
+    "overloads": 0,
+    "snapshots": [
+      {
+        "currency": 100,
+        "hp": 65.0,
+        "kills": 20,
+        "real": 45.399478912353516,
+        "wave": 1,
+        "world": 35.00023651123047
+      },
+      {
+        "currency": 140,
+        "hp": 65.0,
+        "kills": 44,
+        "real": 88.60444641113281,
+        "wave": 2,
+        "world": 70.00496673583984
+      },
+      {
+        "currency": 115,
+        "hp": 60.7208137512207,
+        "kills": 65,
+        "real": 133.46153259277344,
+        "wave": 3,
+        "world": 104.99642181396484
+      },
+      {
+        "currency": 150,
+        "hp": 65.0,
+        "kills": 92,
+        "real": 176.6009979248047,
+        "wave": 4,
+        "world": 139.98788452148438
+      },
+      {
+        "currency": 155,
+        "hp": 65.0,
+        "kills": 122,
+        "real": 218.5907440185547,
+        "wave": 5,
+        "world": 174.97933959960938
+      },
+      {
+        "currency": 190,
+        "hp": 60.44055938720703,
+        "kills": 153,
+        "real": 263.329833984375,
+        "wave": 6,
+        "world": 209.97079467773438
+      },
+      {
+        "currency": 245,
+        "hp": 65.0,
+        "kills": 190,
+        "real": 307.93560791015625,
+        "wave": 7,
+        "world": 244.96224975585938
+      },
+      {
+        "currency": 335,
+        "hp": 65.0,
+        "kills": 238,
+        "real": 354.1409912109375,
+        "wave": 8,
+        "world": 279.9537048339844
+      }
+    ]
+  },
+  "elapsed_ms": 3545.4185,
+  "terrain_update_ms": 4.079,
+  "navigation_update_ms": 1047.625,
+  "p95_simulation_ms": 0.6529,
+  "max_simulation_ms": 6.2262,
+  "terrain_digest": 6917821425921261816,
+  "terrain_revision": 96,
+  "config": {
+    "min_scale": 0.03,
+    "transition_seconds": 0.08,
+    "wave_seconds": 35.0,
+    "waves": 8,
+    "spawn_seconds": 1.15,
+    "enemy_hp": 16.0,
+    "contact_damage": 7.0,
+    "debris_budget": 2000
+  },
+  "platform": "windows-x86_64",
+  "privileged": false
+}

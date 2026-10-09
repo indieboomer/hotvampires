@@ -31,6 +31,8 @@ impl Rng {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Enemy {
+    #[serde(default)]
+    pub body: crate::controller::Body,
     pub id: u64,
     pub pos: Vec2,
     pub prev: Vec2,
@@ -42,6 +44,12 @@ pub struct Enemy {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Shot {
+    #[serde(default)]
+    pub y: f32,
+    #[serde(default)]
+    pub prev_y: f32,
+    #[serde(default)]
+    pub velocity_y: f32,
     pub pos: Vec2,
     pub prev: Vec2,
     pub velocity: Vec2,
@@ -51,6 +59,16 @@ pub struct Shot {
     pub pierce: u32,
     pub hit: Vec<u64>,
     pub primary: bool,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Grenade {
+    pub pos: Vec3,
+    pub prev: Vec3,
+    pub velocity: Vec3,
+    pub fuse: f32,
+    pub damage: f32,
+    pub radius: f32,
+    pub strength: f32,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Debris {
@@ -104,6 +122,17 @@ impl Wall {
         }
         false
     }
+    pub fn solid3(&self, p: Vec3) -> bool {
+        let c = ((p - self.origin) / CELL).floor().as_ivec3();
+        if c.min_element() < 0
+            || c.x >= self.size[0] as i32
+            || c.y >= self.size[1] as i32
+            || c.z >= self.size[2] as i32
+        {
+            return false;
+        }
+        self.cells[c.x as usize + self.size[0] * (c.y as usize + self.size[1] * c.z as usize)]
+    }
     pub fn support(&mut self) -> Vec<Vec3> {
         let mut reached = vec![false; self.cells.len()];
         let mut stack = Vec::new();
@@ -142,7 +171,24 @@ impl Wall {
     }
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Metrics {
+    pub terrain_edits: u32,
+    pub removed_voxels: u64,
+    pub dirty_chunks: u64,
+    pub falls: u32,
+    pub no_progress_seconds: f32,
+    pub stuck_reports: u32,
+    pub unreachable_reports: u32,
+    pub grounding_errors: u32,
+    pub penetration_errors: u32,
+    pub vertical_spikes: u32,
+    pub navigation_rebuilds: u32,
+    pub trapped_reports: u32,
+    #[serde(skip)]
+    pub terrain_update_us: u64,
+    #[serde(skip)]
+    pub navigation_update_us: u64,
     pub kills: u32,
     pub earned: u32,
     pub spent: u32,
@@ -159,6 +205,18 @@ pub struct Metrics {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Game {
+    #[serde(default)]
+    pub terrain: crate::terrain::Terrain,
+    #[serde(default)]
+    pub physics: crate::terrain::Physics,
+    #[serde(default)]
+    pub player_body: crate::controller::Body,
+    #[serde(default)]
+    pub grenades: Vec<Grenade>,
+    #[serde(default)]
+    pub grenade_timer: f32,
+    #[serde(skip)]
+    pub navigation: crate::navigation::Navigation,
     pub schema: u32,
     pub seed: u64,
     pub config: Config,
@@ -206,7 +264,13 @@ impl Game {
         config.validate().unwrap();
         let seed = seed.max(1);
         Self {
-            schema: 1,
+            schema: 2,
+            terrain: crate::terrain::Terrain::new(seed),
+            physics: crate::terrain::Physics::default(),
+            player_body: crate::controller::Body::at(0.0),
+            grenades: Vec::new(),
+            grenade_timer: 0.0,
+            navigation: crate::navigation::Navigation::default(),
             seed,
             config,
             cards: crate::content::load(),
@@ -217,11 +281,18 @@ impl Game {
             facing: 0.0,
             hp: 65.0,
             currency: 0,
-            build: vec![Owned {
-                id: "needle".into(),
-                level: 1,
-                spent: 0,
-            }],
+            build: vec![
+                Owned {
+                    id: "grenade".into(),
+                    level: 1,
+                    spent: 0,
+                },
+                Owned {
+                    id: "needle".into(),
+                    level: 1,
+                    spent: 0,
+                },
+            ],
             shop: Shop::default(),
             combat_rng: Rng(seed),
             shop_rng: Rng(seed ^ 0x1234abcf),
@@ -288,26 +359,46 @@ impl Game {
         (self.accumulator / STEP).clamp(0.0, 1.0)
     }
     pub fn blocked(&self, p: Vec2, r: f32) -> bool {
-        self.walls.iter().any(|w| w.solid(p, r))
+        !self.terrain.bounds(p, r) || self.walls.iter().any(|w| w.solid(p, r))
     }
-    pub fn obstruction(&self, a: Vec2, b: Vec2) -> Option<(usize, Vec2, f32)> {
-        let distance = a.distance(b);
-        let steps = (distance / 0.08).ceil().max(1.0) as usize;
+    /// Collision/attack ray against authoritative solids. Camera fade never enters this path.
+    pub fn ray3(&self, a: Vec3, b: Vec3) -> Option<(usize, Vec3, f32)> {
+        let steps = (a.distance(b) / 0.07).ceil().max(1.0) as usize;
         for i in 0..=steps {
-            let t = i as f32 / steps as f32;
-            let p = a.lerp(b, t);
-            if let Some(w) = self.walls.iter().position(|w| w.solid(p, 0.0)) {
-                return Some((w, p, t));
+            let f = i as f32 / steps as f32;
+            let p = a.lerp(b, f);
+            if self.terrain.solid(p) {
+                return Some((self.walls.len(), p, f));
+            }
+            if let Some(w) = self.walls.iter().position(|w| w.solid3(p)) {
+                return Some((w, p, f));
             }
         }
         None
+    }
+    pub fn body_point(&self, p: Vec2) -> Vec3 {
+        let y = if p == self.player {
+            self.player_body.y
+        } else {
+            self.enemies
+                .iter()
+                .find(|e| e.pos == p)
+                .map_or(self.terrain.height(p), |e| e.body.y)
+        };
+        crate::controller::point(p, y + 0.85)
+    }
+    pub fn obstruction(&self, a: Vec2, b: Vec2) -> Option<(usize, Vec2, f32)> {
+        self.ray3(self.body_point(a), self.body_point(b))
+            .map(|(w, p, t)| (w, Vec2::new(p.x, p.z), t))
     }
     pub fn target(&self, range: f32) -> Option<u64> {
         self.enemies
             .iter()
             .filter(|e| {
                 e.hp > 0.0
-                    && e.pos.distance(self.player) <= range
+                    && crate::controller::point(e.pos, e.body.y + 0.85)
+                        .distance(self.body_point(self.player))
+                        <= range
                     && self.obstruction(self.player, e.pos).is_none()
             })
             .min_by(|a, b| {
@@ -318,16 +409,6 @@ impl Game {
             })
             .map(|e| e.id)
     }
-    fn move_body(&self, p: Vec2, delta: Vec2, r: f32) -> Vec2 {
-        let mut n = p;
-        if !self.blocked(n + Vec2::new(delta.x, 0.0), r) {
-            n.x += delta.x;
-        }
-        if !self.blocked(n + Vec2::new(0.0, delta.y), r) {
-            n.y += delta.y;
-        }
-        n
-    }
     pub fn observe(&self) -> serde_json::Value {
         serde_json::json!({"phase":self.phase,"player":self.player,"hp":self.hp,"currency":self.currency,"wave":self.wave,"scale":self.scale,"build":self.build,"offers":self.shop.offers,"walls":self.walls,"enemies":self.enemies.iter().filter(|e|e.pos.distance(self.player)<12.0 && self.obstruction(self.player,e.pos).is_none()).collect::<Vec<_>>(),"projectiles":self.shots.iter().filter(|s|s.pos.distance(self.player)<12.0 && self.obstruction(self.player,s.pos).is_none()).collect::<Vec<_>>()})
     }
@@ -336,7 +417,34 @@ impl Game {
         self.world += STEP;
         self.wave_time += STEP;
         self.prev_player = self.player;
-        self.player = self.move_body(self.player, input * stats.speed * STEP, 0.3);
+        let grounded = self.player_body.grounded;
+        crate::controller::advance(
+            &self.terrain,
+            &self.walls,
+            &self.physics,
+            &mut self.player,
+            &mut self.player_body,
+            input * stats.speed * STEP,
+            STEP,
+        );
+        if grounded && !self.player_body.grounded {
+            self.metrics.falls += 1;
+        }
+        if input.length_squared() > 0.01
+            && self.player.distance_squared(self.prev_player) < 0.000001
+        {
+            self.metrics.no_progress_seconds += STEP;
+        }
+        if self.player_body.stalled >= 2.0 {
+            self.metrics.stuck_reports += 1;
+            self.player_body.stalled = 0.0;
+            self.event("stuck", serde_json::json!({"actor":"player"}));
+        }
+        let before = std::time::Instant::now();
+        self.navigation
+            .update(&self.terrain, &self.walls, &self.physics, self.player, STEP);
+        self.metrics.navigation_update_us += before.elapsed().as_micros() as u64;
+        self.metrics.navigation_rebuilds = self.navigation.rebuilds;
         if input.length_squared() > 0.001 {
             self.facing = input.x.atan2(input.y);
             self.moving += STEP;
@@ -366,6 +474,10 @@ impl Game {
                 let angle = angle + attempt as f32 * 2.399963;
                 pos = self.player + Vec2::new(angle.cos(), angle.sin()) * 13.5;
             }
+            pos = pos.clamp(
+                Vec2::splat(-crate::terrain::HALF + 1.5),
+                Vec2::splat(crate::terrain::HALF - 1.5),
+            );
             let kind = if self.wave == self.config.waves && !self.elite_spawned {
                 self.elite_spawned = true;
                 3
@@ -375,6 +487,11 @@ impl Game {
                 0
             };
             self.enemies.push(Enemy {
+                body: crate::controller::Body::at(crate::controller::support(
+                    &self.terrain,
+                    pos,
+                    self.physics.radius,
+                )),
                 id: self.next_id,
                 pos,
                 prev: pos,
@@ -395,7 +512,9 @@ impl Game {
             let mut e = self.enemies[i].clone();
             e.prev = e.pos;
             e.clock += STEP;
-            let toward = (self.player - e.pos).normalize_or_zero();
+            let direct = (self.player - e.pos).normalize_or_zero();
+            let route = self.navigation.direction(e.pos, self.player);
+            let toward = route.unwrap_or(Vec2::ZERO);
             if e.kind != 1 {
                 e.direction = toward;
             }
@@ -410,13 +529,23 @@ impl Game {
                     e.clock = 0.0;
                 }
             }
-            if e.kind == 2 && e.pos.distance(self.player) < 8.0 {
+            if e.kind == 2
+                && e.pos.distance(self.player) < 8.0
+                && self.obstruction(e.pos, self.player).is_none()
+            {
                 velocity = Vec2::ZERO;
                 if e.clock > 2.5 && self.obstruction(e.pos, self.player).is_none() {
+                    let aim = (self.body_point(self.player)
+                        - crate::controller::point(e.pos, e.body.y + 0.85))
+                    .normalize_or_zero()
+                        * 4.5;
                     hostile.push(Shot {
+                        y: e.body.y + 0.85,
+                        prev_y: e.body.y + 0.85,
+                        velocity_y: aim.y,
                         pos: e.pos,
                         prev: e.pos,
-                        velocity: toward * 4.5,
+                        velocity: Vec2::new(aim.x, aim.z),
                         life: 5.0,
                         damage: self.config.contact_damage,
                         hostile: true,
@@ -427,23 +556,52 @@ impl Game {
                     e.clock = 0.0;
                 }
             }
-            let next = self.move_body(e.pos, velocity * STEP, 0.32);
-            if next.distance_squared(e.pos) < 0.000001
+            let old = e.pos;
+            let prior_stall = e.body.stalled;
+            let was_grounded = e.body.grounded;
+            crate::controller::advance(
+                &self.terrain,
+                &self.walls,
+                &self.physics,
+                &mut e.pos,
+                &mut e.body,
+                velocity * STEP,
+                STEP,
+            );
+            let next = e.pos;
+            if was_grounded && !e.body.grounded {
+                self.metrics.falls += 1;
+            }
+            if route.is_none() {
+                e.body.stalled = prior_stall + STEP;
+            }
+            if e.body.stalled >= 3.0 {
+                self.metrics.unreachable_reports += 1;
+                self.event("unreachable", serde_json::json!({"id":e.id,"pos":e.pos}));
+                e.body.stalled = 0.0;
+            }
+            if next.distance_squared(old) < 0.000001
                 && e.clock > 0.8
-                && let Some((w, p, _)) = self.obstruction(e.pos, e.pos + toward * 0.8)
+                && let Some((w, p, _)) = self.ray3(
+                    crate::controller::point(e.pos, e.body.y + 0.8),
+                    crate::controller::point(e.pos + direct * 0.8, e.body.y + 0.8),
+                )
             {
                 demolish.push((w, p));
                 e.clock = 0.0;
             }
             e.pos = next;
-            if e.pos.distance(self.player) < 0.65 {
+            if e.pos.distance(self.player) < 0.65
+                && (e.body.y - self.player_body.y).abs() < 0.7
+                && self.obstruction(e.pos, self.player).is_none()
+            {
                 self.hurt(self.config.contact_damage);
             }
             self.enemies[i] = e;
         }
         self.shots.extend(hostile);
         for (w, p) in demolish {
-            self.chip_wall(w, p, 0.35);
+            self.chip_wall_at(w, p, 0.35);
         }
         for slot in 0..3 {
             self.cooldown[slot] = (self.cooldown[slot] - STEP).max(0.0);
@@ -495,10 +653,16 @@ impl Game {
                 };
                 if slot == 0 {
                     let p = target.or(covered).unwrap();
+                    let direction = (self.body_point(p) - self.body_point(self.player))
+                        .normalize_or_zero()
+                        * 18.0;
                     self.shots.push(Shot {
+                        y: self.player_body.y + 0.85,
+                        prev_y: self.player_body.y + 0.85,
+                        velocity_y: direction.y,
                         pos: self.player,
                         prev: self.player,
-                        velocity: (p - self.player).normalize_or_zero() * 18.0,
+                        velocity: Vec2::new(direction.x, direction.z),
                         life: 1.2,
                         damage: power,
                         hostile: false,
@@ -517,15 +681,14 @@ impl Game {
                                 .iter()
                                 .enumerate()
                                 .find(|(i, v)| {
-                                    **v && Vec2::new(wall.center(*i).x, wall.center(*i).z)
-                                        .distance(self.player)
+                                    **v && wall.center(*i).distance(self.body_point(self.player))
                                         < 2.7 * stats.area
                                 })
-                                .map(|(i, _)| (w, Vec2::new(wall.center(i).x, wall.center(i).z)))
+                                .map(|(i, _)| (w, wall.center(i)))
                         })
                         .collect();
                     for (w, p) in hits {
-                        self.chip_wall(w, p, 0.45);
+                        self.chip_wall_at(w, p, 0.45);
                     }
                 } else {
                     let orbit = self.orbit();
@@ -533,7 +696,9 @@ impl Game {
                         .enemies
                         .iter()
                         .filter(|e| {
-                            e.pos.distance(orbit) < 0.8
+                            crate::controller::point(e.pos, e.body.y + 0.85)
+                                .distance(crate::controller::point(orbit, self.player_body.y + 0.8))
+                                < 0.8
                                 && self.obstruction(self.player, e.pos).is_none()
                         })
                         .map(|e| e.id)
@@ -541,10 +706,58 @@ impl Game {
                     for id in victims {
                         self.damage(id, power, secondary == 0);
                     }
-                    if let Some(w) = self.walls.iter().position(|w| w.solid(orbit, 0.2)) {
-                        self.chip_wall(w, orbit, 0.3);
+                    let orb = crate::controller::point(orbit, self.player_body.y + 0.8);
+                    if let Some(w) = self.walls.iter().position(|w| w.solid3(orb)) {
+                        self.chip_wall_at(w, orb, 0.3);
                     }
                 }
+            }
+        }
+        self.grenade_timer = (self.grenade_timer - STEP).max(0.0);
+        if self.level("grenade") > 0
+            && self.grenade_timer <= 0.0
+            && self.grenades.len() < 8
+            && let Some(e) = self
+                .enemies
+                .iter()
+                .filter(|e| e.hp > 0.0 && e.pos.distance(self.player) < stats.range)
+                .min_by(|a, b| {
+                    a.pos
+                        .distance_squared(self.player)
+                        .total_cmp(&b.pos.distance_squared(self.player))
+                })
+        {
+            let start = crate::controller::point(self.player, self.player_body.y + 1.1);
+            let end = crate::controller::point(e.pos, e.body.y + 0.1);
+            let time = 0.7;
+            let mut velocity = (end - start) / time;
+            velocity.y += 0.5 * self.physics.gravity * time;
+            self.grenades.push(Grenade {
+                pos: start,
+                prev: start,
+                velocity,
+                fuse: 1.4,
+                damage: 18.0 * stats.damage * (1.0 + 0.35 * (self.level("grenade") - 1) as f32),
+                radius: self.physics.grenade_radius * stats.area,
+                strength: self.physics.terrain_strength,
+            });
+            self.grenade_timer = self.physics.grenade_cooldown / stats.attack_speed;
+            self.event("grenade", serde_json::json!({"target":e.id}));
+        }
+        let grenades = std::mem::take(&mut self.grenades);
+        for mut g in grenades {
+            g.prev = g.pos;
+            g.velocity.y -= self.physics.gravity * STEP;
+            g.pos += g.velocity * STEP;
+            g.fuse -= STEP;
+            if let Some((_, p, _)) = self.ray3(g.prev, g.pos) {
+                g.pos = p;
+                g.fuse = 0.0;
+            }
+            if g.fuse <= 0.0 {
+                self.explode(g.pos, g.radius, g.strength, g.damage);
+            } else {
+                self.grenades.push(g);
             }
         }
         let shots = std::mem::take(&mut self.shots);
@@ -552,26 +765,43 @@ impl Game {
             crate::spatial::Grid::new(self.enemies.iter().enumerate().map(|(i, e)| (i, e.pos)));
         for mut s in shots {
             s.prev = s.pos;
+            s.prev_y = s.y;
+            s.y += s.velocity_y * STEP;
             s.pos += s.velocity * STEP;
             s.life -= STEP;
-            let obstruction = self.obstruction(s.prev, s.pos);
+            let obstruction = self.ray3(
+                crate::controller::point(s.prev, s.prev_y),
+                crate::controller::point(s.pos, s.y),
+            );
             let cover_t = obstruction.map_or(2.0, |(_, _, t)| t);
             let mut consumed = false;
             if s.hostile {
-                if segment_hit(s.prev, s.pos, self.player, 0.4).is_some_and(|t| t < cover_t) {
+                if segment_hit3(
+                    crate::controller::point(s.prev, s.prev_y),
+                    crate::controller::point(s.pos, s.y),
+                    self.body_point(self.player),
+                    0.5,
+                )
+                .is_some_and(|t| t < cover_t)
+                {
                     self.hurt(s.damage);
                     consumed = true;
                 }
             } else {
-                let candidates = grid.segment(s.prev, s.pos, 0.4);
+                let candidates = grid.segment(s.prev, s.pos, 0.5);
                 let mut hits: Vec<_> = candidates
                     .iter()
                     .map(|&i| &self.enemies[i])
                     .filter(|e| e.hp > 0.0 && !s.hit.contains(&e.id))
                     .filter_map(|e| {
-                        segment_hit(s.prev, s.pos, e.pos, 0.4)
-                            .filter(|t| *t < cover_t)
-                            .map(|t| (t, e.id))
+                        segment_hit3(
+                            crate::controller::point(s.prev, s.prev_y),
+                            crate::controller::point(s.pos, s.y),
+                            crate::controller::point(e.pos, e.body.y + 0.85),
+                            0.5,
+                        )
+                        .filter(|t| *t < cover_t)
+                        .map(|t| (t, e.id))
                     })
                     .collect();
                 hits.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
@@ -587,7 +817,7 @@ impl Game {
             }
             if !consumed && let Some((w, p, _)) = obstruction {
                 if !s.hostile {
-                    self.chip_wall(w, p, 0.32);
+                    self.chip_wall_at(w, p, 0.32);
                 }
                 consumed = true;
             }
@@ -601,7 +831,9 @@ impl Game {
         });
         let mut collected = 0;
         self.loot.retain(|p| {
-            if p.distance(self.player) < stats.pickup {
+            if p.distance(self.player) < stats.pickup
+                && (self.terrain.height(*p) - self.player_body.y).abs() < 1.0
+            {
                 collected += 1;
                 false
             } else {
@@ -614,7 +846,7 @@ impl Game {
             d.velocity.y -= 9.8 * STEP;
             d.pos += d.velocity * STEP;
             d.life -= STEP;
-            let floor = crate::terrain::height(self.seed, Vec2::new(d.pos.x, d.pos.z)) + 0.05;
+            let floor = self.terrain.height(Vec2::new(d.pos.x, d.pos.z)) + 0.05;
             if d.pos.y < floor {
                 d.pos.y = floor;
                 d.velocity.y = d.velocity.y.abs() * 0.25;
@@ -633,6 +865,7 @@ impl Game {
             self.loot.clear();
             self.enemies.clear();
             self.shots.clear();
+            self.grenades.clear();
             self.accumulator = 0.0;
             self.metrics.snapshots.push(serde_json::json!({"wave":self.wave,"hp":self.hp,"world":self.world,"real":self.real,"currency":self.currency,"kills":self.metrics.kills}));
             if self.wave == self.config.waves {
@@ -689,7 +922,11 @@ impl Game {
         let ids: Vec<_> = self
             .enemies
             .iter()
-            .filter(|e| e.hp > 0.0 && e.pos.distance(p) < r && self.obstruction(p, e.pos).is_none())
+            .filter(|e| {
+                e.hp > 0.0
+                    && self.body_point(e.pos).distance(self.body_point(p)) < r
+                    && self.obstruction(p, e.pos).is_none()
+            })
             .map(|e| e.id)
             .collect();
         for id in ids {
@@ -710,7 +947,7 @@ impl Game {
         );
         let dead = self.enemies[i].hp <= 0.0;
         self.emit(
-            Vec3::new(pos.x, crate::terrain::height(self.seed, pos) + 0.8, pos.y),
+            Vec3::new(pos.x, self.enemies[i].body.y + 0.8, pos.y),
             if dead { 36 } else { 4 },
             [0.7, 0.35, 0.4],
         );
@@ -744,13 +981,68 @@ impl Game {
             self.damage(other, 3.0 * self.level("chain") as f32, false);
         }
     }
+    /// Terrain and collision become authoritative atomically on this simulation tick.
+    /// Renderer consumes checksum-stamped chunks synchronously before presenting.
+    pub fn explode(&mut self, center: Vec3, radius: f32, strength: f32, damage: f32) {
+        let victims: Vec<_> = self
+            .enemies
+            .iter()
+            .filter(|e| {
+                damage > 0.0
+                    && e.hp > 0.0
+                    && self.body_point(e.pos).distance(center) < radius
+                    && self
+                        .ray3(center + Vec3::Y * 0.12, self.body_point(e.pos))
+                        .is_none()
+            })
+            .map(|e| e.id)
+            .collect();
+        for id in victims {
+            self.damage(id, damage, true);
+        }
+        let start = std::time::Instant::now();
+        let edit = self.terrain.excavate(center, radius, strength);
+        self.metrics.terrain_update_us += start.elapsed().as_micros() as u64;
+        if edit.removed > 0 {
+            self.metrics.terrain_edits += 1;
+            self.metrics.removed_voxels += edit.removed as u64;
+            self.metrics.dirty_chunks += edit.dirty_chunks as u64;
+            self.event("excavation",serde_json::json!({"center":center,"radius":radius,"strength":strength,"removed":edit.removed,"revision":self.terrain.revision}));
+            for p in edit.fragments {
+                self.emit(p, 1, [0.47, 0.34, 0.22]);
+            }
+            self.metrics.falls += crate::controller::reconcile(
+                &self.terrain,
+                &self.walls,
+                self.player,
+                &self.physics,
+                &mut self.player_body,
+            ) as u32;
+            for e in &mut self.enemies {
+                self.metrics.falls += crate::controller::reconcile(
+                    &self.terrain,
+                    &self.walls,
+                    e.pos,
+                    &self.physics,
+                    &mut e.body,
+                ) as u32;
+            }
+        }
+        for w in 0..self.walls.len() {
+            self.chip_wall_at(w, center, radius * 0.6);
+        }
+    }
     pub fn chip_wall(&mut self, w: usize, p: Vec2, r: f32) {
-        let wall = &mut self.walls[w];
+        self.chip_wall_at(w, crate::controller::point(p, 0.8), r);
+    }
+    pub fn chip_wall_at(&mut self, w: usize, p: Vec3, r: f32) {
+        let Some(wall) = self.walls.get_mut(w) else {
+            return;
+        };
         let mut removed = Vec::new();
         for i in 0..wall.cells.len() {
             let c = wall.center(i);
-            if wall.cells[i] && Vec2::new(c.x, c.z).distance(p) < r && (c.y - 0.8).abs() < r + 0.25
-            {
+            if wall.cells[i] && c.distance(p) < r {
                 wall.cells[i] = false;
                 removed.push(c);
             }
@@ -766,6 +1058,22 @@ impl Game {
         );
         for c in removed.iter().step_by((removed.len() / 48).max(1)).take(48) {
             self.emit(*c, 1, [0.55, 0.61, 0.62]);
+        }
+        self.metrics.falls += crate::controller::reconcile(
+            &self.terrain,
+            &self.walls,
+            self.player,
+            &self.physics,
+            &mut self.player_body,
+        ) as u32;
+        for e in &mut self.enemies {
+            self.metrics.falls += crate::controller::reconcile(
+                &self.terrain,
+                &self.walls,
+                e.pos,
+                &self.physics,
+                &mut e.body,
+            ) as u32;
         }
     }
     fn emit(&mut self, pos: Vec3, count: usize, color: [f32; 3]) {
@@ -836,20 +1144,41 @@ impl Game {
     pub fn load(path: &std::path::Path) -> Result<Self, String> {
         let mut g: Self = serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
             .map_err(|e| e.to_string())?;
-        if g.schema != 1 || g.phase != Phase::Shop {
+        if ![1, 2].contains(&g.schema) || g.phase != Phase::Shop {
             return Err("Unsupported checkpoint".into());
+        }
+        if g.schema == 1 {
+            g.terrain = crate::terrain::Terrain::new(g.seed);
+            g.player_body = crate::controller::Body::at(crate::controller::support(
+                &g.terrain,
+                g.player,
+                g.physics.radius,
+            ));
+            g.schema = 2;
+        }
+        if !g.terrain.validate()
+            || !g.physics.validate()
+            || !g.terrain.bounds(g.player, g.physics.radius)
+            || g.terrain.seed != g.seed
+            || !g.player.is_finite()
+            || !g.player_body.y.is_finite()
+            || !g.player_body.velocity.is_finite()
+            || !g.player_body.visual_y.is_finite()
+            || !(crate::terrain::BOTTOM + crate::terrain::Y - 0.02..12.0).contains(&g.player_body.y)
+        {
+            return Err("Invalid voxel checkpoint".into());
         }
         g.config.validate()?;
         g.cards = crate::content::load();
-        if g.walls
-            .iter()
-            .any(|w| w.size.iter().product::<usize>() != w.cells.len())
-            || g.build.iter().any(|o| {
-                !g.cards
-                    .iter()
-                    .any(|c| c.id == o.id && o.level > 0 && o.level <= c.max_level)
-            })
-        {
+        if g.walls.iter().any(|w| {
+            !w.origin.is_finite()
+                || w.size.iter().any(|&n| n == 0 || n > 100)
+                || w.size.iter().try_fold(1usize, |n, &v| n.checked_mul(v)) != Some(w.cells.len())
+        }) || g.build.iter().any(|o| {
+            !g.cards
+                .iter()
+                .any(|c| c.id == o.id && o.level > 0 && o.level <= c.max_level)
+        }) {
             return Err("Invalid checkpoint content".into());
         }
         g.debris.clear();
@@ -857,10 +1186,10 @@ impl Game {
         Ok(g)
     }
 }
-fn segment_hit(a: Vec2, b: Vec2, p: Vec2, r: f32) -> Option<f32> {
+fn segment_hit3(a: Vec3, b: Vec3, p: Vec3, r: f32) -> Option<f32> {
     let d = b - a;
-    let offset = a - p;
-    let c = offset.length_squared() - r * r;
+    let o = a - p;
+    let c = o.length_squared() - r * r;
     if c <= 0.0 {
         return Some(0.0);
     }
@@ -868,12 +1197,12 @@ fn segment_hit(a: Vec2, b: Vec2, p: Vec2, r: f32) -> Option<f32> {
     if aa < 1e-9 {
         return None;
     }
-    let b = offset.dot(d);
-    let discriminant = b * b - aa * c;
-    if discriminant < 0.0 {
+    let bb = o.dot(d);
+    let disc = bb * bb - aa * c;
+    if disc < 0.0 {
         return None;
     }
-    let t = (-b - discriminant.sqrt()) / aa;
+    let t = (-bb - disc.sqrt()) / aa;
     if (0.0..=1.0).contains(&t) {
         Some(t)
     } else {

@@ -150,6 +150,7 @@ fn unsupported_sections_collapse() {
 fn cover_blocks_world_target() {
     let mut g = game();
     g.enemies.push(crate::sim::Enemy {
+        body: crate::controller::Body::at(0.0),
         id: 1,
         pos: Vec2::new(0.0, 5.0),
         prev: Vec2::new(0.0, 5.0),
@@ -287,7 +288,7 @@ fn terrain_cache_is_bounded_and_generates_at_distant_negative_coordinates() {
 }
 
 #[test]
-fn exploration_has_no_old_arena_boundary_and_spawns_follow_player() {
+fn finite_arena_edges_stop_characters_and_spawns_stay_bounded() {
     let mut g = Game::new(
         42,
         Config {
@@ -297,14 +298,143 @@ fn exploration_has_no_old_arena_boundary_and_spawns_follow_player() {
         },
     );
     g.walls.clear();
-    g.player = Vec2::new(200.0, -200.0);
+    g.player = Vec2::new(28.0, 0.0);
     g.prev_player = g.player;
-    g.frame(1.0 / 60.0, Vec2::X);
-    for _ in 0..600 {
+    g.player_body = crate::controller::Body::at(crate::controller::support(
+        &g.terrain,
+        g.player,
+        g.physics.radius,
+    ));
+    for _ in 0..180 {
         g.frame(1.0 / 60.0, Vec2::X);
     }
-    assert!(g.player.x > 240.0);
-    assert!(!g.enemies.is_empty());
-    assert!(g.enemies.iter().any(|e| e.pos.distance(g.player) < 18.0));
-    assert!(!g.blocked(Vec2::splat(-10000.0), 0.3));
+    assert!(g.player.x < 31.5);
+    assert!(g.player.x > 29.0);
+    assert!(g.blocked(Vec2::splat(-10000.0), 0.3));
+    assert!(
+        g.enemies
+            .iter()
+            .all(|e| e.pos.abs().max_element() < crate::terrain::HALF)
+    );
+}
+
+#[test]
+fn excavation_rebuilds_only_dirty_meshes_and_changes_real_cover() {
+    let mut g = game();
+    g.walls.clear();
+    let mut cache = crate::render::SceneCache::default();
+    cache.scene(&g, 0.0, 10.0, 1.6);
+    assert!(cache.synchronized(&g));
+    let built = cache.mesh_rebuilds;
+    g.explode(Vec3::ZERO, 1.2, 2.5, 0.0);
+    assert!(!g.terrain.solid(Vec3::new(0.0, -0.5, 0.0)));
+    assert!(!cache.synchronized(&g));
+    assert!(
+        g.ray3(Vec3::new(0.0, -2.0, 0.0), Vec3::new(5.0, 0.8, 0.0))
+            .is_some()
+    );
+    cache.scene(&g, 1.0, 10.0, 1.6);
+    assert!(cache.synchronized(&g));
+    let changed = cache.mesh_rebuilds - built;
+    assert!(changed > 0 && changed <= 16);
+    cache.scene(&g, 2.0, 10.0, 1.6);
+    assert_eq!(cache.mesh_rebuilds, built + changed);
+    for _ in 0..8 {
+        let y = g.terrain.height(Vec2::ZERO);
+        g.explode(Vec3::new(0.0, y, 0.0), 1.2, 2.5, 0.0);
+    }
+    assert_eq!(
+        g.terrain.height(Vec2::ZERO),
+        crate::terrain::BOTTOM + crate::terrain::Y
+    );
+    assert!(g.terrain.validate());
+    let border = g.terrain.top(0, 64);
+    g.explode(Vec3::new(-32.0, 0.0, 0.0), 8.0, 3.0, 0.0);
+    assert_eq!(g.terrain.top(0, 64), border);
+}
+#[test]
+fn large_ledge_blocks_and_rounded_controller_slides_without_tunneling() {
+    let mut g = game();
+    g.walls.clear();
+    g.spawn = 1e6;
+    g.build.clear();
+    for z in 58..70 {
+        for x in 66..72 {
+            g.terrain
+                .set_column(crate::terrain::Terrain::column_center(x, z), 2.0);
+        }
+    }
+    for _ in 0..60 {
+        g.frame(1.0 / 60.0, Vec2::ONE);
+    }
+    assert!(g.player.x < 1.0);
+    assert!(g.player.y > 2.0);
+    assert!(crate::controller::clear(
+        &g.terrain,
+        &g.walls,
+        g.player,
+        g.player_body.y,
+        &g.physics
+    ));
+}
+#[test]
+fn falling_lands_on_a_surviving_structure_in_world_time() {
+    let mut g = game();
+    g.walls = vec![Wall::new(Vec3::ZERO, [4, 4, 4])];
+    g.player = Vec2::splat(0.4);
+    g.prev_player = g.player;
+    g.player_body = crate::controller::Body::at(2.5);
+    g.player_body.grounded = false;
+    g.spawn = 1e6;
+    g.build.clear();
+    for _ in 0..2000 {
+        g.frame(1.0 / 60.0, Vec2::ZERO);
+    }
+    assert!(g.player_body.grounded);
+    assert!((g.player_body.y - 0.8).abs() < 0.02);
+}
+#[test]
+fn corrupted_voxel_checkpoint_is_rejected() {
+    let mut g = shop();
+    g.terrain.tops[64 + 64 * crate::terrain::COLS] = 0;
+    assert!(!g.terrain.validate());
+    let path = std::path::Path::new("target/test-save/corrupted.json");
+    g.save(path).unwrap();
+    assert!(Game::load(path).is_err());
+}
+#[test]
+fn quarter_metre_stair_has_continuous_physical_capsule_contact() {
+    let mut g = game();
+    g.walls.clear();
+    g.spawn = 1e6;
+    g.build.clear();
+    for z in 60..68 {
+        for x in 66..74 {
+            g.terrain
+                .set_column(crate::terrain::Terrain::column_center(x, z), 0.25);
+        }
+    }
+    let mut largest = 0.0f32;
+    for _ in 0..60 {
+        let old = g.player_body.y;
+        g.frame(1.0 / 120.0, Vec2::X);
+        largest = largest.max((g.player_body.y - old).abs());
+    }
+    assert!(g.player.x > 1.1);
+    assert!((g.player_body.y - 0.25).abs() < 0.01);
+    assert!(largest < 0.16, "physical stair rise {largest}");
+}
+#[test]
+fn capsule_corner_contact_on_a_small_structure_is_stably_grounded() {
+    let mut g = game();
+    g.walls = vec![Wall::new(Vec3::new(1.0, 0.0, -0.5), [8, 2, 5])];
+    g.spawn = 1e6;
+    g.build.clear();
+    for _ in 0..90 {
+        g.frame(1.0 / 120.0, Vec2::X);
+        crate::terrain_regression::audit(&mut g);
+    }
+    assert!(g.player.x > 2.0);
+    assert_eq!(g.metrics.grounding_errors, 0);
+    assert_eq!(g.metrics.penetration_errors, 0);
 }

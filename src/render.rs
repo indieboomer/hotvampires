@@ -13,6 +13,7 @@ use winit::window::Window;
 pub struct Vertex {
     position: [f32; 3],
     color: [f32; 3],
+    cut: [f32; 4],
 }
 pub struct Renderer {
     _entry: Entry,
@@ -203,7 +204,7 @@ impl Renderer {
             ];
             let bindings = [vk::VertexInputBindingDescription {
                 binding: 0,
-                stride: 24,
+                stride: std::mem::size_of::<Vertex>() as u32,
                 input_rate: vk::VertexInputRate::VERTEX,
             }];
             let attributes = [
@@ -218,6 +219,12 @@ impl Renderer {
                     binding: 0,
                     format: vk::Format::R32G32B32_SFLOAT,
                     offset: 12,
+                },
+                vk::VertexInputAttributeDescription {
+                    location: 2,
+                    binding: 0,
+                    format: vk::Format::R32G32B32A32_SFLOAT,
+                    offset: 24,
                 },
             ];
             let vertex = vk::PipelineVertexInputStateCreateInfo::default()
@@ -670,28 +677,46 @@ impl Drop for Renderer {
 
 #[derive(Default)]
 pub struct SceneCache {
-    ground: std::collections::BTreeMap<(i32, i32), Vec<Vertex>>,
+    ground: std::collections::BTreeMap<(i32, i32), (u64, Vec<Vertex>)>,
+    pub camera: crate::camera::Camera,
+    pub mesh_rebuilds: u64,
+    pub mesh_us: u64,
+    pub mesh_peak_us: u64,
+    pub scene_peak_us: u64,
     ground_seed: Option<u64>,
     walls: Vec<(Vec<bool>, Vec<Vertex>)>,
 }
 impl SceneCache {
+    pub fn synchronized(&self, game: &Game) -> bool {
+        (0..crate::terrain::CHUNKS).all(|z| {
+            (0..crate::terrain::CHUNKS).all(|x| {
+                self.ground
+                    .get(&(x as i32, z as i32))
+                    .is_some_and(|(stamp, _)| *stamp == game.terrain.stamp(x, z))
+            })
+        })
+    }
+    #[cfg(test)]
     pub fn scene(&mut self, game: &Game, yaw: f32, zoom: f32, aspect: f32) -> Vec<Vertex> {
+        self.scene_frame(game, yaw, zoom, aspect, 1.0 / 60.0)
+    }
+    pub fn scene_frame(
+        &mut self,
+        game: &Game,
+        yaw: f32,
+        zoom: f32,
+        aspect: f32,
+        real_dt: f32,
+    ) -> Vec<Vertex> {
+        let scene_start = std::time::Instant::now();
         let alpha = game.alpha();
         let p = game.prev_player.lerp(game.player, alpha);
-        let center = Vec3::new(p.x, crate::terrain::height(game.seed, p), p.y);
-        let elevation = 30.0_f32.to_radians();
-        let horizontal = 31.0 * elevation.cos();
-        let eye = center
-            + Vec3::new(
-                yaw.sin() * horizontal,
-                31.0 * elevation.sin(),
-                yaw.cos() * horizontal,
-            );
+        let (center, eye) = self.camera.update(game, p, yaw, real_dt);
         let view = Mat4::look_at_rh(eye, center, Vec3::Y);
         let projection =
-            Mat4::orthographic_rh(-zoom * aspect, zoom * aspect, -zoom, zoom, 0.1, 80.0);
+            Mat4::orthographic_rh(-zoom * aspect, zoom * aspect, -zoom, zoom, 0.05, 128.0);
         let matrix = projection * view;
-        self.update_ground(game.seed, p, zoom, aspect);
+        self.update_ground(game);
         self.walls
             .resize_with(game.walls.len(), || (Vec::new(), Vec::new()));
         for (index, wall) in game.walls.iter().enumerate() {
@@ -753,17 +778,32 @@ impl SceneCache {
             self.walls[index] = (wall.cells.clone(), wall_mesh);
         }
         let mut mesh = Vec::new();
-        for ground_mesh in self.ground.values() {
+        for (_, ground_mesh) in self.ground.values() {
             mesh.extend_from_slice(ground_mesh);
         }
         for (_, wall_mesh) in &self.walls {
             mesh.extend_from_slice(wall_mesh);
         }
+        for v in &mut mesh {
+            v.cut[2] = 1.0;
+        }
         let mut cube = |pos: Vec3, size: Vec3, color: [f32; 3]| {
             add_cube(&mut mesh, Mat4::IDENTITY, pos, size, color)
         };
-        let mut bodies = vec![(p, game.facing, [0.12, 0.8, 0.94], 0u32, 0u32)];
+        let mut bodies = vec![(
+            p,
+            game.facing,
+            [0.12, 0.8, 0.94],
+            0u32,
+            0u32,
+            game.player_body.visual_y,
+            game.player_body.grounded,
+        )];
         for e in &game.enemies {
+            // The cutaway belongs to the player; it must not expose covered enemies.
+            if self.camera.fade > 0.01 && game.obstruction(game.player, e.pos).is_some() {
+                continue;
+            }
             bodies.push((
                 e.prev.lerp(e.pos, alpha),
                 e.direction.x.atan2(e.direction.y),
@@ -775,11 +815,12 @@ impl SceneCache {
                 },
                 e.chipped,
                 e.kind,
+                e.body.visual_y,
+                e.body.grounded,
             ));
         }
-        for (pos, facing, color, chipped, kind) in bodies {
-            let root = Vec3::new(pos.x, crate::terrain::height(game.seed, pos), pos.y);
-            let gait = (game.world * 11.0 + pos.x).sin() * 0.1;
+        for (pos, facing, color, chipped, kind, y, grounded) in bodies {
+            let root = Vec3::new(pos.x, y, pos.y);
             cube(
                 root + Vec3::new(0.0, 0.015, 0.0),
                 Vec3::new(0.85, 0.02, 0.65),
@@ -788,9 +829,23 @@ impl SceneCache {
             let forward = Vec3::new(facing.sin(), 0.0, facing.cos());
             let side = Vec3::new(forward.z, 0.0, -forward.x);
             for sign in [-1.0, 1.0] {
+                let foot = root + side * 0.17 * sign;
+                let sole = if grounded {
+                    crate::controller::ground(
+                        &game.terrain,
+                        &game.walls,
+                        glam::Vec2::new(foot.x, foot.z),
+                        0.12,
+                        root.y + game.physics.step_height,
+                    )
+                    .min(root.y + 0.4)
+                } else {
+                    root.y
+                };
+                let length = (root.y + 0.55 - sole).clamp(0.15, 0.9);
                 cube(
-                    root + side * 0.17 * sign + Vec3::new(0.0, 0.3 + gait * sign, 0.0),
-                    Vec3::new(0.23, 0.5, 0.25),
+                    Vec3::new(foot.x, sole + length * 0.5 + 0.02, foot.z),
+                    Vec3::new(0.23, length, 0.25),
                     [0.19, 0.23, 0.33],
                 );
             }
@@ -839,7 +894,7 @@ impl SceneCache {
         }
         for &pos in &game.loot {
             cube(
-                Vec3::new(pos.x, crate::terrain::height(game.seed, pos) + 0.22, pos.y),
+                Vec3::new(pos.x, game.terrain.height(pos) + 0.22, pos.y),
                 Vec3::splat(0.25),
                 [0.98, 0.8, 0.12],
             );
@@ -847,7 +902,7 @@ impl SceneCache {
         for s in &game.shots {
             let pos = s.prev.lerp(s.pos, alpha);
             cube(
-                Vec3::new(pos.x, crate::terrain::height(game.seed, pos) + 0.85, pos.y),
+                Vec3::new(pos.x, s.prev_y + (s.y - s.prev_y) * alpha, pos.y),
                 if s.hostile {
                     Vec3::splat(0.26)
                 } else {
@@ -860,21 +915,39 @@ impl SceneCache {
                 },
             );
         }
+        for g in &game.grenades {
+            cube(
+                g.prev.lerp(g.pos, alpha),
+                Vec3::splat(0.24),
+                [1.0, 0.7, 0.1],
+            );
+        }
         for d in &game.debris {
             cube(d.prev.lerp(d.pos, alpha), Vec3::splat(0.08), d.color);
         }
         if game.level("satellite") > 0 {
             let o = game.orbit();
             cube(
-                Vec3::new(o.x, crate::terrain::height(game.seed, o) + 0.8, o.y),
+                Vec3::new(o.x, game.player_body.visual_y + 0.8, o.y),
                 Vec3::splat(0.45),
                 [0.3, 0.92, 0.97],
             );
         }
+        let player_clip =
+            matrix.transform_point3(Vec3::new(p.x, game.player_body.visual_y + 0.8, p.y));
+        let rx = 2.2 / (zoom * aspect);
+        let ry = 2.0 / zoom;
         for v in &mut mesh {
+            let solid = v.cut[2];
             let mut p = matrix.transform_point3(Vec3::from_array(v.position));
             p.y = -p.y;
             v.position = p.to_array();
+            v.cut = [
+                (p.x - player_clip.x) / rx,
+                (p.y + player_clip.y) / ry,
+                solid * self.camera.fade,
+                player_clip.z - p.z,
+            ];
             if game.phase == crate::sim::Phase::Combat {
                 let activity = if game.config.min_scale < 1.0 {
                     (game.scale - game.config.min_scale) / (1.0 - game.config.min_scale)
@@ -888,68 +961,121 @@ impl SceneCache {
                     .map(|channel| luminance + (channel - luminance) * saturation);
             }
         }
+        if self.camera.fade > 0.05 {
+            // Thin cyan silhouette only; geometry remains opaque outside the local ellipse.
+            let mut outline = Vec::new();
+            let root = Vec3::new(p.x, game.player_body.visual_y, p.y);
+            let outline_matrix = Mat4::from_translation(root) * Mat4::from_rotation_y(yaw);
+            for sign in [-1.0, 1.0] {
+                add_cube(
+                    &mut outline,
+                    outline_matrix,
+                    Vec3::new(0.36 * sign, 0.8, 0.0),
+                    Vec3::new(0.05, 1.5, 0.05),
+                    [0.1, 0.9, 1.0],
+                );
+            }
+            for y in [0.06, 1.53] {
+                add_cube(
+                    &mut outline,
+                    outline_matrix,
+                    Vec3::Y * y,
+                    Vec3::new(0.72, 0.05, 0.1),
+                    [0.1, 0.9, 1.0],
+                );
+            }
+            for v in &mut outline {
+                let mut q = matrix.transform_point3(Vec3::from_array(v.position));
+                q.y = -q.y;
+                q.z = 0.0001;
+                v.position = q.to_array();
+                v.color = v.color.map(|c| c * self.camera.fade);
+            }
+            mesh.extend(outline);
+        }
+        self.scene_peak_us = self
+            .scene_peak_us
+            .max(scene_start.elapsed().as_micros() as u64);
         mesh
     }
-    fn update_ground(&mut self, seed: u64, p: glam::Vec2, zoom: f32, aspect: f32) {
-        use crate::terrain::{CHUNK_SIZE, MESH_STEP};
-        if self.ground_seed != Some(seed) {
+    fn update_ground(&mut self, game: &Game) {
+        use crate::terrain::{BOTTOM, CHUNK_CELLS, CHUNKS, XZ, Y};
+        if self.ground_seed != Some(game.seed) {
             self.ground.clear();
-            self.ground_seed = Some(seed);
+            self.ground_seed = Some(game.seed);
         }
-        let center = (
-            (p.x / CHUNK_SIZE as f32).floor() as i32,
-            (p.y / CHUNK_SIZE as f32).floor() as i32,
-        );
-        // At 30-degree elevation the ground footprint extends twice the vertical zoom.
-        // Overscan also covers yaw, slopes, and travel within the center chunk.
-        let radius = ((zoom * (aspect.max(1.0) + 2.0) + 16.0) / CHUNK_SIZE as f32).ceil() as i32;
-        self.ground
-            .retain(|&(x, z), _| (x - center.0).abs() <= radius && (z - center.1).abs() <= radius);
-        for z in center.1 - radius..=center.1 + radius {
-            for x in center.0 - radius..=center.0 + radius {
-                self.ground.entry((x, z)).or_insert_with(|| {
-                    let mut mesh = Vec::new();
-                    for dz in (0..CHUNK_SIZE).step_by(MESH_STEP as usize) {
-                        for dx in (0..CHUNK_SIZE).step_by(MESH_STEP as usize) {
-                            let point = |ox: i32, oz: i32| {
-                                let p = glam::Vec2::new(
-                                    (x * CHUNK_SIZE + dx + ox) as f32,
-                                    (z * CHUNK_SIZE + dz + oz) as f32,
-                                );
-                                Vec3::new(p.x, crate::terrain::vertex_height(seed, p), p.y)
+        let start = std::time::Instant::now();
+        let t = &game.terrain;
+        for cz in 0..CHUNKS {
+            for cx in 0..CHUNKS {
+                let key = (cx as i32, cz as i32);
+                let stamp = t.stamp(cx, cz);
+                if self.ground.get(&key).is_some_and(|(s, _)| *s == stamp) {
+                    continue;
+                }
+                let mut mesh = Vec::new();
+                for z in cz * CHUNK_CELLS..(cz + 1) * CHUNK_CELLS {
+                    for x in cx * CHUNK_CELLS..(cx + 1) * CHUNK_CELLS {
+                        let p = crate::terrain::Terrain::column_center(x, z);
+                        let top = t.tops[x + crate::terrain::COLS * z] as isize;
+                        // Merge the exposed vertical voxel strip; surfaces still coincide with every voxel.
+                        let h = t.top(x, z);
+                        let edge = crate::terrain::Terrain::protected(x, z);
+                        let color = if edge || top == 0 {
+                            [0.35, 0.4, 0.46]
+                        } else if h < crate::terrain::height(game.seed, p) - Y * 0.5 {
+                            [0.48, 0.35, 0.23]
+                        } else {
+                            [0.26, 0.4, 0.25]
+                        };
+                        add_cube_faces(
+                            &mut mesh,
+                            Mat4::IDENTITY,
+                            Vec3::new(p.x, h - Y * 0.5, p.y),
+                            Vec3::new(XZ, Y, XZ),
+                            color,
+                            [false, false, false, false, true, false],
+                        );
+                        for (dx, dz, face) in [(0, -1, 0), (0, 1, 1), (-1, 0, 2), (1, 0, 3)] {
+                            let nx = x as isize + dx;
+                            let nz = z as isize + dz;
+                            let neighbor = if nx < 0
+                                || nz < 0
+                                || nx >= crate::terrain::COLS as isize
+                                || nz >= crate::terrain::COLS as isize
+                            {
+                                -1
+                            } else {
+                                t.tops[nx as usize + crate::terrain::COLS * nz as usize] as isize
                             };
-                            let a = point(0, 0);
-                            let b = point(MESH_STEP, 0);
-                            let c = point(0, MESH_STEP);
-                            let d = point(MESH_STEP, MESH_STEP);
-                            for tri in [[a, c, b], [b, c, d]] {
-                                let normal = (tri[1] - tri[0]).cross(tri[2] - tri[0]).normalize();
-                                let light = 0.72
-                                    + 0.28
-                                        * normal
-                                            .dot(Vec3::new(-0.3, 0.9, 0.2).normalize())
-                                            .max(0.0);
-                                for pos in tri {
-                                    let variation = crate::terrain::noise(
-                                        seed ^ 0x99887766,
-                                        glam::Vec2::new(pos.x, pos.z) / 36.0,
-                                    ) * 0.5
-                                        + 0.5;
-                                    let green = Vec3::new(0.18, 0.38, 0.24);
-                                    let dry = Vec3::new(0.4, 0.43, 0.27);
-                                    let color = green.lerp(dry, variation * 0.7) * light;
-                                    mesh.push(Vertex {
-                                        position: pos.to_array(),
-                                        color: color.to_array(),
-                                    });
-                                }
+                            if neighbor >= top {
+                                continue;
                             }
+                            let low = BOTTOM + (neighbor + 1) as f32 * Y;
+                            let mut exposed = [false; 6];
+                            exposed[face] = true;
+                            add_cube_faces(
+                                &mut mesh,
+                                Mat4::IDENTITY,
+                                Vec3::new(p.x, (low + h) * 0.5, p.y),
+                                Vec3::new(XZ, h - low, XZ),
+                                if edge {
+                                    [0.34, 0.38, 0.43]
+                                } else {
+                                    [0.48, 0.35, 0.23]
+                                },
+                                exposed,
+                            );
                         }
                     }
-                    mesh
-                });
+                }
+                self.ground.insert(key, (stamp, mesh));
+                self.mesh_rebuilds += 1;
             }
         }
+        let elapsed = start.elapsed().as_micros() as u64;
+        self.mesh_us += elapsed;
+        self.mesh_peak_us = self.mesh_peak_us.max(elapsed);
     }
     #[cfg(test)]
     pub fn ground_chunks(&self) -> usize {
@@ -997,6 +1123,7 @@ fn add_cube_faces(
             mesh.push(Vertex {
                 position: p.to_array(),
                 color: color.map(|c| c * light),
+                cut: [0.0; 4],
             });
         }
     }

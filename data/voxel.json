@@ -1,0 +1,13 @@
+{
+  "step_height": 0.55,
+  "max_slope_degrees": 50.0,
+  "ground_snap": 0.55,
+  "gravity": 9.8,
+  "radius": 0.28,
+  "body_height": 1.6,
+  "grenade_radius": 3.2,
+  "terrain_strength": 0.6,
+  "grenade_cooldown": 3.0,
+  "camera_follow_seconds": 0.18,
+  "camera_fade_seconds": 0.12
+}

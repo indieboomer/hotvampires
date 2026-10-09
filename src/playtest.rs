@@ -39,6 +39,18 @@ pub struct Report {
     pub currency: u32,
     pub metrics: crate::sim::Metrics,
     pub elapsed_ms: f64,
+    #[serde(default)]
+    pub terrain_update_ms: f64,
+    #[serde(default)]
+    pub navigation_update_ms: f64,
+    #[serde(default)]
+    pub p95_simulation_ms: f64,
+    #[serde(default)]
+    pub max_simulation_ms: f64,
+    #[serde(default)]
+    pub terrain_digest: u64,
+    #[serde(default)]
+    pub terrain_revision: u64,
     pub config: Config,
     pub platform: String,
     pub privileged: bool,
@@ -57,6 +69,11 @@ impl Replay {
             &std::fs::read(path.with_extension("json")).map_err(|e| e.to_string())?,
         )
         .map_err(|e| e.to_string())?;
+        if !expected.build_id.is_empty() && expected.build_id != env!("HV_SOURCE_HASH") {
+            return Err(
+                "Replay source fingerprint differs; generate a fresh run with this build".into(),
+            );
+        }
         let events = std::fs::read_to_string(path)
             .map_err(|e| e.to_string())?
             .lines()
@@ -121,6 +138,9 @@ pub fn replay_headless(path: &Path) -> Result<(), String> {
     if replay.game.metrics.kills != replay.expected.metrics.kills
         || replay.game.metrics.purchases != replay.expected.metrics.purchases
         || (replay.game.hp - replay.expected.hp).abs() > 0.01
+        || (replay.expected.terrain_digest != 0
+            && (replay.game.terrain.digest() != replay.expected.terrain_digest
+                || replay.game.terrain.revision != replay.expected.terrain_revision))
     {
         return Err(format!(
             "Replay diverged: HP {} expected {}, kills {} expected {}",
@@ -161,7 +181,23 @@ pub fn movement(game: &Game, policy: &str) -> Vec2 {
     for i in 0..16 {
         let angle = i as f32 * std::f32::consts::TAU / 16.0;
         let d = Vec2::new(angle.cos(), angle.sin());
-        let future = game.player + d * 1.8;
+        let mut future = game.player;
+        let mut body = game.player_body.clone();
+        // Observe current terrain by trying the shared controller, rather than assuming a flat XZ map.
+        for _ in 0..18 {
+            crate::controller::advance(
+                &game.terrain,
+                &game.walls,
+                &game.physics,
+                &mut future,
+                &mut body,
+                d * 0.1,
+                0.02,
+            );
+        }
+        if future.distance_squared(game.player) < 0.04 {
+            continue;
+        }
         if game.blocked(future, 0.4) {
             continue;
         }
@@ -299,6 +335,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             let start = Instant::now();
             let mut game = Game::new(seed, cfg.game.clone());
             let mut input = Vec2::ZERO;
+            let mut frame_times = Vec::new();
             let mut frame = 0u32;
             let mut log = std::fs::File::create(output.join(format!("{policy}-{seed}.jsonl")))
                 .map_err(|e| e.to_string())?;
@@ -319,7 +356,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         input = movement(&game, policy);
                         game.event("input", serde_json::json!({"movement":input}));
                     }
+                    let frame_start = Instant::now();
                     game.frame(1.0 / 60.0, input);
+                    frame_times.push(frame_start.elapsed().as_secs_f64() * 1000.0);
+                    crate::terrain_regression::audit(&mut game);
+                    if frame.is_multiple_of(300) && crate::terrain_regression::trapped(&game) {
+                        game.metrics.trapped_reports += 1;
+                        game.event("trapped",serde_json::json!({"player":game.player,"y":game.player_body.y,"revision":game.terrain.revision}));
+                    }
                     frame += 1;
                 }
                 for e in game.events.drain(..) {
@@ -332,7 +376,17 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 _ => "timeout",
             }
             .to_string();
+            frame_times.sort_by(f64::total_cmp);
             let report = Report {
+                terrain_digest: game.terrain.digest(),
+                terrain_revision: game.terrain.revision,
+                terrain_update_ms: game.metrics.terrain_update_us as f64 / 1000.0,
+                navigation_update_ms: game.metrics.navigation_update_us as f64 / 1000.0,
+                p95_simulation_ms: frame_times
+                    .get(frame_times.len() * 95 / 100)
+                    .copied()
+                    .unwrap_or(0.0),
+                max_simulation_ms: frame_times.last().copied().unwrap_or(0.0),
                 build_id: env!("HV_SOURCE_HASH").into(),
                 data_hash: {
                     let mut h = 0xcbf29ce484222325u64;
@@ -340,6 +394,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         .iter()
                         .copied()
                         .chain(include_bytes!("../data/terrain.json").iter().copied())
+                        .chain(include_bytes!("../data/voxel.json").iter().copied())
                         .chain(serde_json::to_vec(&cfg.game).unwrap())
                     {
                         h = (h ^ b as u64).wrapping_mul(0x100000001b3);
@@ -348,7 +403,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 },
                 seed,
                 policy: policy.clone(),
-                policy_version: "directions-v1/0.15s".into(),
+                policy_version: "directions-v2-terrain/0.15s".into(),
                 outcome,
                 virtual_seconds: game.real,
                 world_seconds: game.world,
@@ -420,7 +475,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         if clock_ok {
             "PASS"
         } else {
-            "FAIL — extreme slowdown absent"
+            "FAIL - extreme slowdown absent"
         }
     );
     std::fs::write(output.join("report.md"), md).map_err(|e| e.to_string())?;
@@ -475,6 +530,7 @@ pub fn stress() -> Result<(), String> {
         let angle = i as f32 * 0.41;
         let pos = Vec2::new(angle.cos(), angle.sin()) * (3.0 + (i % 10) as f32 * 0.8);
         game.enemies.push(crate::sim::Enemy {
+            body: crate::controller::Body::at(game.terrain.height(pos)),
             id: i + 1,
             pos,
             prev: pos,
@@ -492,6 +548,9 @@ pub fn stress() -> Result<(), String> {
             let a = game.shots.len() as f32 * 0.43;
             let p = Vec2::new(a.cos(), a.sin()) * 6.0;
             game.shots.push(crate::sim::Shot {
+                y: 0.85,
+                prev_y: 0.85,
+                velocity_y: 0.0,
                 pos: p,
                 prev: p,
                 velocity: Vec2::new(-a.sin(), a.cos()) * 18.0,

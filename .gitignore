@@ -5,4 +5,6 @@
 /reports/**/*.jsonl
 !/reports/verified/mobile-11.jsonl
 !/reports/terrain-smoke/mobile-11.jsonl
+!/reports/voxel-smoke/mobile-11.jsonl
+/reports/voxel-smoke/*-shop.json
 

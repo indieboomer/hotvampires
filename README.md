@@ -1,6 +1,6 @@
 # Hot Vampires
 
-Current user-directed changes supersede the bounded arena/flat voxel-floor portions of the original brief: terrain is now an unbounded, seeded noise-generated triangle height field with broad flat building patches, and remains indestructible. Existing ruins occupy a flat starting clearing. Characters and destructible objects retain their placeholder voxel style. Mouse motion automatically orbits outside dialogs; camera elevation is 30 degrees. See RUNNING.md and STATUS.md for implemented behavior.
+Latest user-directed revision supersedes the original indestructible floor and the later infinite-height-field requirement. Ground is now finite-volume destructible voxel soil, with protected bedrock and stone arena edges. Automatic grenades make real craters; characters step over small ledges, fall when support disappears and use elevation-aware combat/navigation. The 30-degree mouse-orbit camera uses local visual cutaways and a player outline. Terrain persists through waves, shops and checkpoint loading; new runs reset it. See RUNNING.md, STATUS.md and reports/VOXEL-TERRAIN.md. Historical floor restrictions below are superseded by this revision.
 
 SPECIFICATION / IMPLEMENTATION BRIEF FOR CODEX
 Project: colorful voxel arena survivor with movement-dependent time
@@ -18,7 +18,7 @@ BINDING REQUIREMENTS
 1. During active gameplay, standing still produces extreme TIME SLOWDOWN, never a complete time stop.
 2. There is no manual aiming or firing. Weapons operate automatically.
 3. Rotating the camera/world view does not accelerate time.
-4. Use a colorful 3D voxel world and simplified 3D voxel characters. Ground/floor terrain is indestructible. Obstacles, buildings, ruins, and enemies are destructible and break into small voxel fragments. This explicitly supersedes the earlier camera-facing 2D character requirement; see Section 14.
+4. Use a colorful 3D voxel world and simplified 3D voxel characters. Ground/floor terrain is destructible, except protected bedrock and arena edges. Obstacles, buildings, ruins, and enemies are destructible and break into small voxel fragments. This explicitly supersedes the earlier camera-facing 2D character requirement; see Section 14.
 5. Build the game from scratch using Rust + Vulkan.
 6. The shop, including skills and items, is a core pillar. Include it in the first complete gameplay loop, with meaningful choices, synergies, and trade-offs.
 7. Include an automated playtester and tools allowing Codex to run sessions, diagnose problems, and verify improvements. See Section 13.
@@ -49,7 +49,7 @@ Rotate the camera, not simulation coordinates. Camera rotation alone must not ch
 
 Use actual 3D voxel character models rather than camera-facing character quads. Start with rigid voxel body parts and simple procedural locomotion. Orient characters toward movement or their current behavior; standing still may retain the last facing direction. Automatic attacks do not depend on player-model facing. Camera rotation changes the view of the models, never their world orientation or simulation state. Ground contact shadows help readability. UI labels may remain billboards.
 
-Arena: one flat, indestructible voxel-styled ground surface with destructible obstacles and compact ruin/building structures. No digging, editable terrain, jumping, traversable upper floors, or open-world streaming. Horizontal gameplay collision is sufficient for the first version, while destruction visuals and fragments move in 3D. Destructible geometry must affect movement and line of sight as specified in Section 14.
+Arena: a finite destructible voxel soil volume with protected bedrock and bounded edges, destructible obstacles and compact ruins. Explosions excavate real craters; movement, falling, combat visibility and navigation account for elevation. No jumping or open-world streaming at this stage. See the latest terrain revision in STATUS.md.
 
 3. TIME SYSTEM — THE CENTRAL RULE
 
@@ -363,7 +363,7 @@ Create a bright, stylized voxel action-adventure atmosphere: clear silhouettes, 
 
 Small fragments peeling off a wall, a column crumbling, and an enemy bursting apart should be a signature visual reward. The player can rotate the camera while time is extremely slow to inspect the destruction. Favor strong readable action over photorealism, tiny visual noise, or gore.
 
-This revision replaces the earlier 2D billboard-character proposal with true 3D voxel characters and enemies. Do not implement both character rendering systems. The player shares the simplified voxel visual style but retains a conventional HP system; volumetric player dismemberment is not required. Enemies must visibly chip and break apart. Ground remains indestructible under all attacks.
+This revision replaces the earlier 2D billboard-character proposal with true 3D voxel characters and enemies. Do not implement both character rendering systems. The player shares the simplified voxel visual style but retains a conventional HP system; volumetric player dismemberment is not required. Enemies must visibly chip and break apart. Ground excavation is now supported by automatic grenades; ordinary projectiles do not remove soil.
 
 VOXEL SCALE AND CAMERA READABILITY
 
@@ -375,7 +375,7 @@ Use limited material palettes per object, broad color grouping, and restrained l
 
 DESTRUCTION CONTRACT
 
-Ground/floor: fully indestructible, including beneath buildings. No terrain excavation, holes, falling through the floor, or mining economy.
+Ground/floor: finite-volume voxel soil supports excavation, exposed interiors, falling and bounded traversal. Bedrock and arena edges are protected. No mining economy.
 
 Obstacles/buildings/ruins: finite voxel volumes with authored materials and durability. Damage removes local cells or compact groups near the impact, exposes interior faces, and eventually opens routes. Destroying a large object must not merely hide the entire intact mesh after its HP reaches zero. The first vertical slice must demonstrate localized damage before complete collapse.
 
@@ -434,7 +434,7 @@ Add replays for simultaneous explosions, support collapse, death during destruct
 
 ACCEPTANCE AND SCOPE
 
-- The floor cannot be damaged or excavated by any weapon or explosion.
+- Explosions excavate actual voxel soil, updating geometry, collision, grounding, navigation and combat visibility together.
 - One wall or ruin can be locally chipped, breached, and partially collapsed.
 - The breach correctly changes collision, line of sight, and navigation.
 - A living enemy visibly chips and breaks into voxel fragments on death; rewards occur once.
