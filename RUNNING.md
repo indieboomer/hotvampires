@@ -13,6 +13,8 @@ cargo run --offline
 
 Remove `--offline` on a fresh machine if the crates have not been downloaded. No installation or files outside the project are needed at runtime. Run from this folder so checkpoints and reports stay here.
 
+The launcher builds into `target/iteration` so Windows can preserve an older running executable while a new iteration is compiled. The current development executable is `target/iteration/debug/hot-vampires.exe`.
+
 WASD moves relative to the camera. Move the mouse horizontally to orbit around the vertical Y axis, without holding any button; relative input permits continuous rotation without reaching the screen edge. The camera sits 30 degrees above the ground. Q/E also rotates, and the wheel zooms. Camera controls are inactive while a pause, shop or results dialog is shown. The cursor is released and visible in dialogs or when focus is lost, and captured automatically when gameplay resumes. Escape pauses and frees the cursor. Standing still advances combat at 3% speed; camera input does not affect it. The world smoothly desaturates to nearly monochrome as combat slows, returning to full color while moving; HUD and shop remain unaffected. Holding movement against a wall counts as attempted movement and restores full speed. All weapons and skills activate automatically. Gold cubes are currency; bright pink cubes are hostile shots; small muted fragments are harmless. F5 restores the most recent shop checkpoint. R restarts after death or victory.
 
 Survive eight 35-world-second waves. The final elite must also die before victory. Every intervening shop offers four cards, paid healing, escalating rerolls, offer locks, selling, and upgrades. Weapons use three slots, skills four, and items no slots. The starter Needle has no sale refund. Keep at least one weapon. Cards currently all have common rarity.
@@ -20,6 +22,12 @@ Survive eight 35-world-second waves. The final elite must also die before victor
 Stats are recomputed from the build. Additive modifiers combine before caps; damage and attack speed modifiers are relative multipliers, critical chance is percentage points. Armor scales damage by `10/(10+armor)` when nonnegative; negative armor increases damage by `1-armor/10`. Refunds use integer floor of 40% of actual spend. Increasing max HP never heals; decreasing it clamps current HP. Echo, Rupture and Chain secondary damage cannot recursively trigger procs.
 
 # Playtesting
+
+F10 opens/closes Settings from gameplay or another screen. The mouse-sensitivity slider takes effect immediately and saves to `saves/settings.json` inside this project. Default sensitivity is 0.50× the original camera speed (0.003 radians per pixel), with a 0.10×–2.00× range and a reset button. Settings pauses combat and frees the cursor; Escape closes it without changing an underlying pause/shop state.
+
+Terrain is an unbounded, indestructible triangle height field, not a voxel volume. Seeded two-scale value noise sets elevations; 48-unit spacing produces flat building patches approximately 27 units across with smooth, low slopes between them. Settings live in `data/terrain.json`. The starting clearing stays flat at height zero beneath the authored ruins. Future buildings should be placed on patch centers (multiples of 48 units) at the sampled ground height; procedural building placement is not implemented yet.
+
+The renderer caches 16-unit chunks with 2-unit mesh spacing, generates surrounding chunks on demand and evicts distant ones. World-coordinate sampling gives matching borders, including negative coordinates. Characters, loot, projectiles and debris follow the same triangle-height sampler; camera tracking follows player elevation. Combat targeting and movement collision remain horizontal, and hills are walkable. Ground has no damage/edit API. Ruins remain destructible. Enemy spawns follow the player; distant non-elite stragglers recycle without rewards. The infinite escape space changes encounter balance and still needs tuning.
 
 ```powershell
 cargo test --offline
@@ -31,6 +39,8 @@ cargo run --offline -- playtest replay --run reports/verified/mobile-11.jsonl --
 cargo run --offline -- playtest stress
 # A rendered bot, bounded by frame count:
 cargo run --offline -- --bot --frames 2400
+# Rendered terrain exploration through ordinary movement, with no teleporting:
+cargo run --offline -- --terrain-walk --frames 2400
 # Actual widget hit testing with synthetic pointer events, not direct purchase calls:
 cargo run --offline -- --checkpoint reports/verified/mobile-11-shop.json --ui-smoke --frames 120
 ```

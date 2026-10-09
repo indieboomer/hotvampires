@@ -288,7 +288,7 @@ impl Game {
         (self.accumulator / STEP).clamp(0.0, 1.0)
     }
     pub fn blocked(&self, p: Vec2, r: f32) -> bool {
-        p.abs().max_element() > 14.5 - r || self.walls.iter().any(|w| w.solid(p, r))
+        self.walls.iter().any(|w| w.solid(p, r))
     }
     pub fn obstruction(&self, a: Vec2, b: Vec2) -> Option<(usize, Vec2, f32)> {
         let distance = a.distance(b);
@@ -358,7 +358,14 @@ impl Game {
         if self.spawn <= 0.0 && self.enemies.len() < 300 {
             self.spawn = self.config.spawn_seconds / (1.0 + 0.16 * (self.wave - 1) as f32);
             let angle = self.combat_rng.unit() * std::f32::consts::TAU;
-            let pos = Vec2::new(angle.cos(), angle.sin()) * 13.5;
+            let mut pos = self.player + Vec2::new(angle.cos(), angle.sin()) * 13.5;
+            for attempt in 1..9 {
+                if !self.blocked(pos, 0.4) {
+                    break;
+                }
+                let angle = angle + attempt as f32 * 2.399963;
+                pos = self.player + Vec2::new(angle.cos(), angle.sin()) * 13.5;
+            }
             let kind = if self.wave == self.config.waves && !self.elite_spawned {
                 self.elite_spawned = true;
                 3
@@ -588,7 +595,10 @@ impl Game {
                 self.shots.push(s);
             }
         }
-        self.enemies.retain(|e| e.hp > 0.0);
+        // Unseen stragglers recycle without rewards; retain the final elite.
+        self.enemies.retain(|e| {
+            e.hp > 0.0 && (e.kind == 3 || e.pos.distance_squared(self.player) < 80.0 * 80.0)
+        });
         let mut collected = 0;
         self.loot.retain(|p| {
             if p.distance(self.player) < stats.pickup {
@@ -604,8 +614,9 @@ impl Game {
             d.velocity.y -= 9.8 * STEP;
             d.pos += d.velocity * STEP;
             d.life -= STEP;
-            if d.pos.y < 0.05 {
-                d.pos.y = 0.05;
+            let floor = crate::terrain::height(self.seed, Vec2::new(d.pos.x, d.pos.z)) + 0.05;
+            if d.pos.y < floor {
+                d.pos.y = floor;
                 d.velocity.y = d.velocity.y.abs() * 0.25;
                 d.velocity.x *= 0.9;
                 d.velocity.z *= 0.9;
@@ -699,7 +710,7 @@ impl Game {
         );
         let dead = self.enemies[i].hp <= 0.0;
         self.emit(
-            Vec3::new(pos.x, 0.8, pos.y),
+            Vec3::new(pos.x, crate::terrain::height(self.seed, pos) + 0.8, pos.y),
             if dead { 36 } else { 4 },
             [0.7, 0.35, 0.4],
         );

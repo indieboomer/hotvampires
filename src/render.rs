@@ -670,14 +670,15 @@ impl Drop for Renderer {
 
 #[derive(Default)]
 pub struct SceneCache {
-    ground: Vec<Vertex>,
+    ground: std::collections::BTreeMap<(i32, i32), Vec<Vertex>>,
+    ground_seed: Option<u64>,
     walls: Vec<(Vec<bool>, Vec<Vertex>)>,
 }
 impl SceneCache {
     pub fn scene(&mut self, game: &Game, yaw: f32, zoom: f32, aspect: f32) -> Vec<Vertex> {
         let alpha = game.alpha();
         let p = game.prev_player.lerp(game.player, alpha);
-        let center = Vec3::new(p.x, 0.0, p.y);
+        let center = Vec3::new(p.x, crate::terrain::height(game.seed, p), p.y);
         let elevation = 30.0_f32.to_radians();
         let horizontal = 31.0 * elevation.cos();
         let eye = center
@@ -690,21 +691,7 @@ impl SceneCache {
         let projection =
             Mat4::orthographic_rh(-zoom * aspect, zoom * aspect, -zoom, zoom, 0.1, 80.0);
         let matrix = projection * view;
-        if self.ground.is_empty() {
-            for z in -15..15 {
-                for x in -15..15 {
-                    let tint = if (x + z) % 2 == 0 { 1.0 } else { 0.94 };
-                    add_cube_faces(
-                        &mut self.ground,
-                        Mat4::IDENTITY,
-                        Vec3::new(x as f32 + 0.5, -0.18, z as f32 + 0.5),
-                        Vec3::new(1.0, 0.3, 1.0),
-                        [0.2 * tint, 0.34 * tint, 0.29 * tint],
-                        [false, false, false, false, true, false],
-                    );
-                }
-            }
-        }
+        self.update_ground(game.seed, p, zoom, aspect);
         self.walls
             .resize_with(game.walls.len(), || (Vec::new(), Vec::new()));
         for (index, wall) in game.walls.iter().enumerate() {
@@ -765,7 +752,10 @@ impl SceneCache {
             }
             self.walls[index] = (wall.cells.clone(), wall_mesh);
         }
-        let mut mesh = self.ground.clone();
+        let mut mesh = Vec::new();
+        for ground_mesh in self.ground.values() {
+            mesh.extend_from_slice(ground_mesh);
+        }
         for (_, wall_mesh) in &self.walls {
             mesh.extend_from_slice(wall_mesh);
         }
@@ -788,7 +778,7 @@ impl SceneCache {
             ));
         }
         for (pos, facing, color, chipped, kind) in bodies {
-            let root = Vec3::new(pos.x, 0.0, pos.y);
+            let root = Vec3::new(pos.x, crate::terrain::height(game.seed, pos), pos.y);
             let gait = (game.world * 11.0 + pos.x).sin() * 0.1;
             cube(
                 root + Vec3::new(0.0, 0.015, 0.0),
@@ -849,7 +839,7 @@ impl SceneCache {
         }
         for &pos in &game.loot {
             cube(
-                Vec3::new(pos.x, 0.22, pos.y),
+                Vec3::new(pos.x, crate::terrain::height(game.seed, pos) + 0.22, pos.y),
                 Vec3::splat(0.25),
                 [0.98, 0.8, 0.12],
             );
@@ -857,7 +847,7 @@ impl SceneCache {
         for s in &game.shots {
             let pos = s.prev.lerp(s.pos, alpha);
             cube(
-                Vec3::new(pos.x, 0.85, pos.y),
+                Vec3::new(pos.x, crate::terrain::height(game.seed, pos) + 0.85, pos.y),
                 if s.hostile {
                     Vec3::splat(0.26)
                 } else {
@@ -876,7 +866,7 @@ impl SceneCache {
         if game.level("satellite") > 0 {
             let o = game.orbit();
             cube(
-                Vec3::new(o.x, 0.8, o.y),
+                Vec3::new(o.x, crate::terrain::height(game.seed, o) + 0.8, o.y),
                 Vec3::splat(0.45),
                 [0.3, 0.92, 0.97],
             );
@@ -899,6 +889,71 @@ impl SceneCache {
             }
         }
         mesh
+    }
+    fn update_ground(&mut self, seed: u64, p: glam::Vec2, zoom: f32, aspect: f32) {
+        use crate::terrain::{CHUNK_SIZE, MESH_STEP};
+        if self.ground_seed != Some(seed) {
+            self.ground.clear();
+            self.ground_seed = Some(seed);
+        }
+        let center = (
+            (p.x / CHUNK_SIZE as f32).floor() as i32,
+            (p.y / CHUNK_SIZE as f32).floor() as i32,
+        );
+        // At 30-degree elevation the ground footprint extends twice the vertical zoom.
+        // Overscan also covers yaw, slopes, and travel within the center chunk.
+        let radius = ((zoom * (aspect.max(1.0) + 2.0) + 16.0) / CHUNK_SIZE as f32).ceil() as i32;
+        self.ground
+            .retain(|&(x, z), _| (x - center.0).abs() <= radius && (z - center.1).abs() <= radius);
+        for z in center.1 - radius..=center.1 + radius {
+            for x in center.0 - radius..=center.0 + radius {
+                self.ground.entry((x, z)).or_insert_with(|| {
+                    let mut mesh = Vec::new();
+                    for dz in (0..CHUNK_SIZE).step_by(MESH_STEP as usize) {
+                        for dx in (0..CHUNK_SIZE).step_by(MESH_STEP as usize) {
+                            let point = |ox: i32, oz: i32| {
+                                let p = glam::Vec2::new(
+                                    (x * CHUNK_SIZE + dx + ox) as f32,
+                                    (z * CHUNK_SIZE + dz + oz) as f32,
+                                );
+                                Vec3::new(p.x, crate::terrain::vertex_height(seed, p), p.y)
+                            };
+                            let a = point(0, 0);
+                            let b = point(MESH_STEP, 0);
+                            let c = point(0, MESH_STEP);
+                            let d = point(MESH_STEP, MESH_STEP);
+                            for tri in [[a, c, b], [b, c, d]] {
+                                let normal = (tri[1] - tri[0]).cross(tri[2] - tri[0]).normalize();
+                                let light = 0.72
+                                    + 0.28
+                                        * normal
+                                            .dot(Vec3::new(-0.3, 0.9, 0.2).normalize())
+                                            .max(0.0);
+                                for pos in tri {
+                                    let variation = crate::terrain::noise(
+                                        seed ^ 0x99887766,
+                                        glam::Vec2::new(pos.x, pos.z) / 36.0,
+                                    ) * 0.5
+                                        + 0.5;
+                                    let green = Vec3::new(0.18, 0.38, 0.24);
+                                    let dry = Vec3::new(0.4, 0.43, 0.27);
+                                    let color = green.lerp(dry, variation * 0.7) * light;
+                                    mesh.push(Vertex {
+                                        position: pos.to_array(),
+                                        color: color.to_array(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    mesh
+                });
+            }
+        }
+    }
+    #[cfg(test)]
+    pub fn ground_chunks(&self) -> usize {
+        self.ground.len()
     }
 }
 fn add_cube(mesh: &mut Vec<Vertex>, m: Mat4, pos: Vec3, size: Vec3, color: [f32; 3]) {

@@ -45,12 +45,12 @@ fn movement_uses_shared_clock_and_normalized_input() {
 #[test]
 fn blocked_attempt_restores_speed() {
     let mut g = game();
-    g.player = Vec2::new(14.2, 0.0);
+    g.player = Vec2::new(0.0, 2.69);
     for _ in 0..120 {
-        g.frame(1.0 / 60.0, Vec2::X);
+        g.frame(1.0 / 60.0, Vec2::Y);
     }
     assert!(g.scale > 0.99);
-    assert!(g.player.x < 14.3);
+    assert!(g.player.y < 2.71);
 }
 #[test]
 fn shop_fully_pauses() {
@@ -221,4 +221,90 @@ fn spatial_grid_includes_swept_path_and_excludes_distant_entities() {
         grid.segment(Vec2::new(-1.0, 0.0), Vec2::new(4.0, 0.0), 0.4),
         vec![0, 1]
     );
+}
+
+#[test]
+fn terrain_has_flat_building_patches_and_seeded_variation() {
+    let center = Vec2::new(96.0, 48.0);
+    let expected = crate::terrain::height(42, center);
+    for offset in [
+        Vec2::ZERO,
+        Vec2::new(-10.0, 10.0),
+        Vec2::new(10.0, -10.0),
+        Vec2::splat(10.0),
+    ] {
+        assert!((crate::terrain::height(42, center + offset) - expected).abs() < 0.00001);
+    }
+    assert_ne!(
+        crate::terrain::height(42, center),
+        crate::terrain::height(43, center)
+    );
+    for x in [-1000.5, -16.001, -16.0, -15.999, 0.0, 16.0, 999.5] {
+        let p = Vec2::new(x, 37.3);
+        let h = crate::terrain::height(42, p);
+        assert!(h.is_finite() && h.abs() <= 4.3);
+        assert!((h - crate::terrain::height(42, p + Vec2::X * 0.002)).abs() < 0.01);
+    }
+}
+
+#[test]
+fn terrain_preserves_the_starting_building_foundations() {
+    let g = game();
+    for wall in &g.walls {
+        for i in 0..wall.cells.len() {
+            let c = wall.center(i);
+            if wall.coord(i)[1] == 0 {
+                assert_eq!(
+                    crate::terrain::height(g.seed, Vec2::new(c.x, c.z)),
+                    wall.origin.y
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn terrain_cache_is_bounded_and_generates_at_distant_negative_coordinates() {
+    let mut g = game();
+    let mut cache = crate::render::SceneCache::default();
+    let mut count = 0;
+    for pos in [
+        Vec2::ZERO,
+        Vec2::splat(10000.0),
+        Vec2::splat(-10000.0),
+        Vec2::new(-500.0, 1000.0),
+    ] {
+        g.player = pos;
+        g.prev_player = pos;
+        assert!(!cache.scene(&g, 0.4, 10.0, 1.6).is_empty());
+        if count == 0 {
+            count = cache.ground_chunks();
+        } else {
+            assert_eq!(cache.ground_chunks(), count);
+        }
+    }
+    assert!(count <= 121);
+}
+
+#[test]
+fn exploration_has_no_old_arena_boundary_and_spawns_follow_player() {
+    let mut g = Game::new(
+        42,
+        Config {
+            wave_seconds: 600.0,
+            contact_damage: 0.0,
+            ..Config::default()
+        },
+    );
+    g.walls.clear();
+    g.player = Vec2::new(200.0, -200.0);
+    g.prev_player = g.player;
+    g.frame(1.0 / 60.0, Vec2::X);
+    for _ in 0..600 {
+        g.frame(1.0 / 60.0, Vec2::X);
+    }
+    assert!(g.player.x > 240.0);
+    assert!(!g.enemies.is_empty());
+    assert!(g.enemies.iter().any(|e| e.pos.distance(g.player) < 18.0));
+    assert!(!g.blocked(Vec2::splat(-10000.0), 0.3));
 }

@@ -1,0 +1,3154 @@
+{
+  "schema": 1,
+  "seed": 11,
+  "config": {
+    "min_scale": 0.03,
+    "transition_seconds": 0.08,
+    "wave_seconds": 35.0,
+    "waves": 8,
+    "spawn_seconds": 1.15,
+    "enemy_hp": 16.0,
+    "contact_damage": 7.0,
+    "debris_budget": 2000
+  },
+  "phase": "Shop",
+  "wave": 1,
+  "player": [
+    8.470367,
+    5.3189216
+  ],
+  "prev_player": [
+    8.485675,
+    5.281966
+  ],
+  "facing": -0.39269918,
+  "hp": 65.0,
+  "currency": 100,
+  "build": [
+    {
+      "id": "needle",
+      "level": 1,
+      "spent": 0
+    }
+  ],
+  "shop": {
+    "offers": [
+      {
+        "id": "echo",
+        "locked": false
+      },
+      {
+        "id": "magnet",
+        "locked": false
+      },
+      {
+        "id": "light_frame",
+        "locked": false
+      },
+      {
+        "id": "shard",
+        "locked": false
+      }
+    ],
+    "rerolls": 0
+  },
+  "combat_rng": 10245986289400820195,
+  "shop_rng": 10505270870914224397,
+  "visual_rng": 6488369596224931434,
+  "scale": 0.9999999,
+  "world": 35.000237,
+  "real": 35.08297,
+  "wave_time": 35.000237,
+  "accumulator": 0.0,
+  "spawn": 0.90833354,
+  "cooldown": [
+    0.44166672,
+    0.0,
+    0.0
+  ],
+  "activations": [
+    59,
+    0,
+    0
+  ],
+  "invulnerability": 0.0,
+  "enemies": [],
+  "shots": [],
+  "walls": [
+    {
+      "origin": [
+        -3.0,
+        0.0,
+        3.0
+      ],
+      "size": [
+        30,
+        8,
+        2
+      ],
+      "cells": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "origin": [
+        5.0,
+        0.0,
+        -4.0
+      ],
+      "size": [
+        2,
+        10,
+        25
+      ],
+      "cells": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "origin": [
+        -7.0,
+        0.0,
+        -5.0
+      ],
+      "size": [
+        15,
+        6,
+        2
+      ],
+      "cells": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  ],
+  "loot": [],
+  "debris": [
+    {
+      "pos": [
+        8.5680485,
+        0.05,
+        -4.687896
+      ],
+      "prev": [
+        8.5680485,
+        0.05,
+        -4.687896
+      ],
+      "velocity": [
+        2.640824e-8,
+        0.016333334,
+        -6.5776273e-9
+      ],
+      "life": 0.1833217,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.5191646,
+        0.05,
+        -5.101381
+      ],
+      "prev": [
+        6.5191646,
+        0.05,
+        -5.101381
+      ],
+      "velocity": [
+        7.513413e-11,
+        0.016333334,
+        -1.1162026e-10
+      ],
+      "life": 0.1833217,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        8.15496,
+        0.05,
+        -4.045156
+      ],
+      "prev": [
+        8.15496,
+        0.05,
+        -4.045156
+      ],
+      "velocity": [
+        7.474119e-8,
+        0.016333334,
+        -1.6832287e-9
+      ],
+      "life": 0.1833217,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        3.531303,
+        0.05,
+        -1.3544997
+      ],
+      "prev": [
+        3.531303,
+        0.05,
+        -1.3544997
+      ],
+      "velocity": [
+        -1.5703975e-8,
+        0.016333334,
+        1.8480838e-8
+      ],
+      "life": 0.1833217,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.6686707,
+        0.05,
+        -3.9907186
+      ],
+      "prev": [
+        6.6686707,
+        0.05,
+        -3.9907186
+      ],
+      "velocity": [
+        8.87778e-9,
+        0.016333334,
+        8.85368e-9
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        4.521173,
+        0.05,
+        -4.0837984
+      ],
+      "prev": [
+        4.521173,
+        0.05,
+        -4.0837984
+      ],
+      "velocity": [
+        -0.0000012640097,
+        0.016333334,
+        3.0155456e-7
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.364287,
+        0.05,
+        -1.6528093
+      ],
+      "prev": [
+        6.364287,
+        0.05,
+        -1.6528094
+      ],
+      "velocity": [
+        6.9485924e-7,
+        0.016333334,
+        0.000010588922
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        8.201768,
+        0.05,
+        -6.957876
+      ],
+      "prev": [
+        8.201768,
+        0.05,
+        -6.957876
+      ],
+      "velocity": [
+        0.00002062451,
+        0.016333334,
+        -0.000025269375
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        8.433258,
+        0.05,
+        -3.5240712
+      ],
+      "prev": [
+        8.433258,
+        0.05,
+        -3.5240712
+      ],
+      "velocity": [
+        7.776414e-7,
+        0.016333334,
+        3.294751e-7
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.204523,
+        0.05,
+        -6.5461946
+      ],
+      "prev": [
+        6.204523,
+        0.05,
+        -6.5461946
+      ],
+      "velocity": [
+        8.046115e-9,
+        0.016333334,
+        -6.459059e-7
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.185656,
+        0.05,
+        -5.276799
+      ],
+      "prev": [
+        5.185656,
+        0.05,
+        -5.276799
+      ],
+      "velocity": [
+        -8.2818e-9,
+        0.016333334,
+        -6.65048e-9
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        8.362907,
+        0.05,
+        -2.6646416
+      ],
+      "prev": [
+        8.362907,
+        0.05,
+        -2.6646416
+      ],
+      "velocity": [
+        1.2800601e-7,
+        0.016333334,
+        1.06350456e-7
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.954635,
+        0.05,
+        -1.8424039
+      ],
+      "prev": [
+        6.954635,
+        0.05,
+        -1.842404
+      ],
+      "velocity": [
+        0.000001950537,
+        0.016333334,
+        0.000006628943
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.2663097,
+        0.05,
+        -4.969277
+      ],
+      "prev": [
+        5.2663097,
+        0.05,
+        -4.969277
+      ],
+      "velocity": [
+        -0.000002294013,
+        0.016333334,
+        -0.000001231933
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.3432145,
+        0.05,
+        -5.352177
+      ],
+      "prev": [
+        6.3432145,
+        0.05,
+        -5.352177
+      ],
+      "velocity": [
+        2.4535944e-9,
+        0.016333334,
+        -1.3026195e-8
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.5462837,
+        0.05,
+        -5.7376184
+      ],
+      "prev": [
+        5.5462837,
+        0.05,
+        -5.7376184
+      ],
+      "velocity": [
+        -1.8663906e-8,
+        0.016333334,
+        -3.713236e-8
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        4.2257566,
+        0.05,
+        -3.4469945
+      ],
+      "prev": [
+        4.2257566,
+        0.05,
+        -3.4469945
+      ],
+      "velocity": [
+        -0.0000040239465,
+        0.016333334,
+        0.0000021268868
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.2892866,
+        0.05,
+        -2.4296877
+      ],
+      "prev": [
+        7.2892866,
+        0.05,
+        -2.4296877
+      ],
+      "velocity": [
+        0.0000015365532,
+        0.016333334,
+        0.0000028359548
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.3800554,
+        0.05,
+        -4.7447643
+      ],
+      "prev": [
+        6.3800554,
+        0.05,
+        -4.7447643
+      ],
+      "velocity": [
+        7.662886e-8,
+        0.016333334,
+        -1.0108463e-7
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.271138,
+        0.05,
+        -2.5421479
+      ],
+      "prev": [
+        5.271138,
+        0.05,
+        -2.5421479
+      ],
+      "velocity": [
+        -4.374009e-8,
+        0.016333334,
+        9.335202e-8
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.0199976,
+        0.05,
+        -3.5075526
+      ],
+      "prev": [
+        6.0199976,
+        0.05,
+        -3.5075526
+      ],
+      "velocity": [
+        -2.611085e-9,
+        0.016333334,
+        1.5979142e-8
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.598579,
+        0.05,
+        -2.8749335
+      ],
+      "prev": [
+        7.598579,
+        0.05,
+        -2.8749335
+      ],
+      "velocity": [
+        1.9227556e-8,
+        0.016333334,
+        2.1727008e-8
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        4.2252307,
+        0.05,
+        -6.5465417
+      ],
+      "prev": [
+        4.2252307,
+        0.05,
+        -6.5465417
+      ],
+      "velocity": [
+        -0.000014759136,
+        0.016333334,
+        -0.000015618361
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.8295994,
+        0.05,
+        -5.500213
+      ],
+      "prev": [
+        5.8295994,
+        0.05,
+        -5.500213
+      ],
+      "velocity": [
+        -3.343459e-8,
+        0.016333334,
+        -9.775644e-8
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.058644,
+        0.05,
+        -2.4081821
+      ],
+      "prev": [
+        6.058644,
+        0.05,
+        -2.4081821
+      ],
+      "velocity": [
+        -2.7913117e-8,
+        0.016333334,
+        4.810651e-7
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.2943273,
+        0.05,
+        -2.346314
+      ],
+      "prev": [
+        7.2943273,
+        0.05,
+        -2.346314
+      ],
+      "velocity": [
+        0.0000012655777,
+        0.016333334,
+        0.0000024198469
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.0258694,
+        0.05,
+        -4.40393
+      ],
+      "prev": [
+        5.0258694,
+        0.05,
+        -4.40393
+      ],
+      "velocity": [
+        -3.7507316e-8,
+        0.016333334,
+        2.4501727e-9
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        4.733043,
+        0.05,
+        -5.4250355
+      ],
+      "prev": [
+        4.733043,
+        0.05,
+        -5.4250355
+      ],
+      "velocity": [
+        -3.510734e-8,
+        0.016333334,
+        -2.296642e-8
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        4.3572087,
+        0.05,
+        -2.8727834
+      ],
+      "prev": [
+        4.3572087,
+        0.05,
+        -2.8727834
+      ],
+      "velocity": [
+        -0.000002282277,
+        0.016333334,
+        0.0000020127457
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        8.087591,
+        0.05,
+        -6.9738307
+      ],
+      "prev": [
+        8.087591,
+        0.05,
+        -6.9738307
+      ],
+      "velocity": [
+        0.0000011939633,
+        0.016333334,
+        -0.0000015603819
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        4.920568,
+        0.05,
+        -4.216682
+      ],
+      "prev": [
+        4.920568,
+        0.05,
+        -4.216682
+      ],
+      "velocity": [
+        -1.9707889e-7,
+        0.016333334,
+        4.112933e-8
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        8.418191,
+        0.05,
+        -5.7766204
+      ],
+      "prev": [
+        8.418191,
+        0.05,
+        -5.7766204
+      ],
+      "velocity": [
+        0.000002540587,
+        0.016333334,
+        -0.0000014718464
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.6496305,
+        0.05,
+        -4.990188
+      ],
+      "prev": [
+        6.6496305,
+        0.05,
+        -4.990188
+      ],
+      "velocity": [
+        1.7926975e-7,
+        0.016333334,
+        -1.9453562e-7
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        8.850531,
+        0.05,
+        -5.926113
+      ],
+      "prev": [
+        8.850531,
+        0.05,
+        -5.926113
+      ],
+      "velocity": [
+        0.000027238428,
+        0.016333334,
+        -0.0000147509545
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        3.7306964,
+        0.05,
+        -2.2428648
+      ],
+      "prev": [
+        3.7306964,
+        0.05,
+        -2.2428648
+      ],
+      "velocity": [
+        -6.2757357e-7,
+        0.016333334,
+        5.7330874e-7
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.3590484,
+        0.05,
+        -2.4596455
+      ],
+      "prev": [
+        7.3590484,
+        0.05,
+        -2.4596455
+      ],
+      "velocity": [
+        0.0000010973754,
+        0.016333334,
+        0.0000018777622
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        4.2338514,
+        0.05,
+        -4.296281
+      ],
+      "prev": [
+        4.2338514,
+        0.05,
+        -4.296281
+      ],
+      "velocity": [
+        -1.03359994e-7,
+        0.016333334,
+        9.724438e-9
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        8.0728,
+        0.05,
+        -5.5808754
+      ],
+      "prev": [
+        8.0728,
+        0.05,
+        -5.5808754
+      ],
+      "velocity": [
+        0.0000011847277,
+        0.016333334,
+        -6.89061e-7
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.3009763,
+        0.05,
+        -3.38373
+      ],
+      "prev": [
+        5.3009763,
+        0.05,
+        -3.38373
+      ],
+      "velocity": [
+        -3.3422688e-7,
+        0.016333334,
+        4.1712477e-7
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        4.8539476,
+        0.05,
+        -2.5654953
+      ],
+      "prev": [
+        4.8539476,
+        0.05,
+        -2.5654953
+      ],
+      "velocity": [
+        -1.7941666e-8,
+        0.016333334,
+        2.5917618e-8
+      ],
+      "life": 0.6249881,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.5679026,
+        0.15565549,
+        3.5713906
+      ],
+      "prev": [
+        7.553742,
+        0.20330404,
+        3.583316
+      ],
+      "velocity": [
+        1.6992681,
+        -5.7178254,
+        -1.4310586
+      ],
+      "life": 1.9499868,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.166414,
+        0.05,
+        6.2529836
+      ],
+      "prev": [
+        7.161436,
+        0.05,
+        6.2487392
+      ],
+      "velocity": [
+        0.537616,
+        0.016343053,
+        0.45837975
+      ],
+      "life": 1.9499868,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        4.1507015,
+        0.05,
+        3.742801
+      ],
+      "prev": [
+        4.1546464,
+        0.05,
+        3.746017
+      ],
+      "velocity": [
+        -0.42605248,
+        0.016333371,
+        -0.34733
+      ],
+      "life": 1.9499868,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.886801,
+        0.061431088,
+        6.337251
+      ],
+      "prev": [
+        5.8860636,
+        0.05,
+        6.328221
+      ],
+      "velocity": [
+        0.08848843,
+        1.3717306,
+        1.0836192
+      ],
+      "life": 1.9499868,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.490677,
+        1.7499391,
+        3.7925458
+      ],
+      "prev": [
+        7.474631,
+        1.765917,
+        3.8036141
+      ],
+      "velocity": [
+        1.9255037,
+        -1.9173461,
+        -1.3282151
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.400981,
+        0.9132279,
+        4.849671
+      ],
+      "prev": [
+        6.398224,
+        0.9394096,
+        4.8478475
+      ],
+      "velocity": [
+        0.33082104,
+        -3.1418016,
+        0.21881223
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.6948223,
+        1.3701096,
+        4.8934636
+      ],
+      "prev": [
+        6.688482,
+        1.3907195,
+        4.891106
+      ],
+      "velocity": [
+        0.7608743,
+        -2.4731944,
+        0.28292012
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.6346474,
+        0.63126314,
+        4.437472
+      ],
+      "prev": [
+        5.641236,
+        0.6608834,
+        4.4406753
+      ],
+      "velocity": [
+        -0.79058695,
+        -3.554433,
+        -0.38441062
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.594491,
+        0.8875532,
+        5.187227
+      ],
+      "prev": [
+        5.601569,
+        0.914048,
+        5.181287
+      ],
+      "velocity": [
+        -0.84935546,
+        -3.1793747,
+        0.71277905
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.3227415,
+        0.71978724,
+        5.1595044
+      ],
+      "prev": [
+        5.3331337,
+        0.748328,
+        5.1539025
+      ],
+      "velocity": [
+        -1.2470653,
+        -3.4248855,
+        0.67220354
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.581977,
+        0.079329796,
+        5.838576
+      ],
+      "prev": [
+        6.577487,
+        0.07301818,
+        5.82602
+      ],
+      "velocity": [
+        0.5387648,
+        0.7573938,
+        1.506731
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.1140594,
+        0.90491474,
+        4.219955
+      ],
+      "prev": [
+        7.1026063,
+        0.9311978,
+        4.225811
+      ],
+      "velocity": [
+        1.3743579,
+        -3.1539674,
+        -0.7027526
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.9871397,
+        1.2372057,
+        3.613863
+      ],
+      "prev": [
+        5.9894295,
+        1.2594365,
+        3.6271102
+      ],
+      "velocity": [
+        -0.27476716,
+        -2.6676877,
+        -1.5896759
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.498145,
+        1.1695023,
+        4.7232194
+      ],
+      "prev": [
+        7.482008,
+        1.1925586,
+        4.722938
+      ],
+      "velocity": [
+        1.9364436,
+        -2.7667663,
+        0.033780098
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.544833,
+        0.93251324,
+        5.888575
+      ],
+      "prev": [
+        5.552517,
+        0.95845973,
+        5.874082
+      ],
+      "velocity": [
+        -0.9220443,
+        -3.1135793,
+        1.7391536
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.249075,
+        1.4420038,
+        5.965838
+      ],
+      "prev": [
+        6.2481704,
+        1.461737,
+        5.9504027
+      ],
+      "velocity": [
+        0.10856509,
+        -2.367983,
+        1.8522022
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.8662004,
+        0.99906796,
+        3.6025167
+      ],
+      "prev": [
+        6.85777,
+        1.0242028,
+        3.6159024
+      ],
+      "velocity": [
+        1.0116441,
+        -3.0161822,
+        -1.6063008
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.6475496,
+        0.066177145,
+        5.190252
+      ],
+      "prev": [
+        5.653352,
+        0.05842885,
+        5.1848593
+      ],
+      "velocity": [
+        -0.69625807,
+        0.9297951,
+        0.6470784
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.483795,
+        0.53156626,
+        3.518763
+      ],
+      "prev": [
+        7.467833,
+        0.56240237,
+        3.5331702
+      ],
+      "velocity": [
+        1.9154558,
+        -3.700331,
+        -1.7288642
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.9178133,
+        0.52021813,
+        4.890531
+      ],
+      "prev": [
+        6.9087534,
+        0.55119264,
+        4.8882093
+      ],
+      "velocity": [
+        1.0871828,
+        -3.7169375,
+        0.27862406
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.7666903,
+        0.3985264,
+        4.2655463
+      ],
+      "prev": [
+        5.7716684,
+        0.43098494,
+        4.2708464
+      ],
+      "velocity": [
+        -0.597358,
+        -3.8950236,
+        -0.6359856
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        4.8328104,
+        0.72285473,
+        4.804705
+      ],
+      "prev": [
+        4.8491774,
+        0.75135803,
+        4.80343
+      ],
+      "velocity": [
+        -1.9640629,
+        -3.4203966,
+        0.15303564
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.4796524,
+        0.8907236,
+        4.1944222
+      ],
+      "prev": [
+        5.488131,
+        0.9171797,
+        4.2005897
+      ],
+      "velocity": [
+        -1.0174294,
+        -3.1747348,
+        -0.740072
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.7791243,
+        0.6191764,
+        4.9263864
+      ],
+      "prev": [
+        5.783951,
+        0.6489441,
+        4.9236274
+      ],
+      "velocity": [
+        -0.57918596,
+        -3.5721214,
+        0.3310902
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.225457,
+        0.92783743,
+        5.4521728
+      ],
+      "prev": [
+        7.2126455,
+        0.953841,
+        5.4430017
+      ],
+      "velocity": [
+        1.5373764,
+        -3.1204221,
+        1.100532
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.139944,
+        1.0385405,
+        5.510198
+      ],
+      "prev": [
+        7.1281753,
+        1.0631939,
+        5.5003195
+      ],
+      "velocity": [
+        1.4122782,
+        -2.9584174,
+        1.185463
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.476757,
+        1.0634465,
+        3.7527466
+      ],
+      "prev": [
+        7.4608808,
+        1.0877962,
+        3.7643
+      ],
+      "velocity": [
+        1.9051459,
+        -2.9219694,
+        -1.3864331
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.9128084,
+        0.05,
+        4.3927016
+      ],
+      "prev": [
+        6.9038095,
+        0.050753314,
+        4.396451
+      ],
+      "velocity": [
+        0.9718808,
+        1.1145821,
+        -0.40492043
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.0561523,
+        1.5902869,
+        5.455848
+      ],
+      "prev": [
+        6.0576005,
+        1.6082118,
+        5.4466324
+      ],
+      "velocity": [
+        -0.17380667,
+        -2.1509836,
+        1.1059098
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.0100517,
+        0.98031944,
+        6.0013804
+      ],
+      "prev": [
+        6.999867,
+        1.005683,
+        5.985512
+      ],
+      "velocity": [
+        1.2221813,
+        -3.043619,
+        1.904257
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.287589,
+        0.6514656,
+        3.5760455
+      ],
+      "prev": [
+        6.286215,
+        0.6808395,
+        3.589754
+      ],
+      "velocity": [
+        0.1649003,
+        -3.5248685,
+        -1.6450424
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.7476225,
+        0.0585133,
+        3.7891226
+      ],
+      "prev": [
+        5.752318,
+        0.05,
+        3.7991338
+      ],
+      "velocity": [
+        -0.56342286,
+        1.0215955,
+        -1.2013456
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.208254,
+        1.2761599,
+        3.3602977
+      ],
+      "prev": [
+        6.207847,
+        1.2979156,
+        3.3766372
+      ],
+      "velocity": [
+        0.048811197,
+        -2.6106815,
+        -1.9607522
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        5.289467,
+        0.29087806,
+        3.5974336
+      ],
+      "prev": [
+        5.300265,
+        0.32464936,
+        3.6108813
+      ],
+      "velocity": [
+        -1.2957616,
+        -4.0525575,
+        -1.6137404
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.755183,
+        0.06624191,
+        5.539037
+      ],
+      "prev": [
+        6.7487984,
+        0.058461234,
+        5.529807
+      ],
+      "velocity": [
+        0.7661612,
+        0.9336811,
+        1.1075939
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.045438,
+        0.59071434,
+        5.749377
+      ],
+      "prev": [
+        7.0348215,
+        0.6208291,
+        5.7365813
+      ],
+      "velocity": [
+        1.2739673,
+        -3.6137726,
+        1.5354681
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.5270805,
+        1.4626551,
+        5.107618
+      ],
+      "prev": [
+        6.5227857,
+        1.4821364,
+        5.1026487
+      ],
+      "velocity": [
+        0.51539063,
+        -2.3377616,
+        0.5962968
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        7.1844015,
+        0.18663177,
+        4.265781
+      ],
+      "prev": [
+        7.1720905,
+        0.22167438,
+        4.271078
+      ],
+      "velocity": [
+        1.477345,
+        -4.205113,
+        -0.63566923
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.817911,
+        0.66262835,
+        5.975183
+      ],
+      "prev": [
+        6.8100696,
+        0.6918661,
+        5.959634
+      ],
+      "velocity": [
+        0.9409852,
+        -3.5085328,
+        1.8659036
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "pos": [
+        6.772437,
+        0.17193356,
+        4.294911
+      ],
+      "prev": [
+        6.76515,
+        0.20715542,
+        4.299853
+      ],
+      "velocity": [
+        0.8744259,
+        -4.226622,
+        -0.5930593
+      ],
+      "life": 2.3166575,
+      "color": [
+        0.7,
+        0.35,
+        0.4
+      ]
+    }
+  ],
+  "next_id": 32,
+  "elite_spawned": false,
+  "stationary": 0.0,
+  "moving": 35.000237,
+  "inertia": false,
+  "momentum": 1.0,
+  "metrics": {
+    "kills": 20,
+    "earned": 100,
+    "spent": 0,
+    "purchases": 0,
+    "rerolls": 0,
+    "heals": 0,
+    "dealt": 486.0,
+    "received": 0.0,
+    "cover_removed": 384,
+    "debris_peak": 206,
+    "standing": 0.0,
+    "overloads": 0,
+    "snapshots": [
+      {
+        "currency": 100,
+        "hp": 65.0,
+        "kills": 20,
+        "real": 35.082969665527344,
+        "wave": 1,
+        "world": 35.00023651123047
+      }
+    ]
+  }
+}

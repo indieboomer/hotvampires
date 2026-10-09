@@ -3,6 +3,7 @@ fn main() {
     println!("cargo:rerun-if-changed=src");
     println!("cargo:rerun-if-changed=data/content.json");
     println!("cargo:rerun-if-changed=data/config.json");
+    println!("cargo:rerun-if-changed=data/terrain.json");
     let mut paths = std::fs::read_dir("src")
         .unwrap()
         .map(|e| e.unwrap().path())
@@ -14,6 +15,7 @@ fn main() {
             "build.rs",
             "data/content.json",
             "data/config.json",
+            "data/terrain.json",
             "shaders/voxel.wgsl",
         ]
         .map(std::path::PathBuf::from),

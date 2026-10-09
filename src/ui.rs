@@ -4,9 +4,11 @@ pub fn draw(
     game: &mut Game,
     paused: &mut bool,
     notice: &mut String,
-    fps: f32,
-    adapter: &str,
+    settings: &mut crate::settings::Settings,
+    settings_open: &mut bool,
+    diagnostics: (f32, &str),
 ) {
+    let (fps, adapter) = diagnostics;
     egui::TopBottomPanel::top("hud").show(ctx, |ui| {
         ui.horizontal(|ui| {
             ui.heading("HOT VAMPIRES");
@@ -21,8 +23,42 @@ pub fn draw(
             ui.label(format!("TIME ×{:.2}", game.scale));
         });
     });
-    egui::TopBottomPanel::bottom("help").show(ctx,|ui|{ui.label("WASD move · mouse motion or Q/E orbit · wheel zoom · Esc pause / free cursor · F5 load checkpoint · R restart on results");ui.small(format!("{fps:.0} FPS | enemies {} | shots {} | debris {} / {} | world {:.1}s / real {:.1}s | seed {} | {}",game.enemies.len(),game.shots.len(),game.debris.len(),game.config.debris_budget,game.world,game.real,game.seed,adapter));});
-    if game.phase == Phase::Shop {
+    egui::TopBottomPanel::bottom("help").show(ctx,|ui|{ui.label("WASD move · mouse or Q/E orbit · wheel zoom · Esc pause · F10 settings · F5 load · R restart");ui.small(format!("{fps:.0} FPS | enemies {} | shots {} | debris {} / {} | world {:.1}s / real {:.1}s | seed {} | {}",game.enemies.len(),game.shots.len(),game.debris.len(),game.config.debris_budget,game.world,game.real,game.seed,adapter));});
+    if *settings_open {
+        let mut open = true;
+        let mut close = false;
+        let mut changed = false;
+        egui::Window::new("Settings")
+            .open(&mut open)
+            .collapsible(false)
+            .resizable(false)
+            .default_width(360.0)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ctx, |ui| {
+                ui.label("Mouse sensitivity");
+                let slider = ui.add(
+                    egui::Slider::new(&mut settings.mouse_sensitivity, 0.1..=2.0)
+                        .suffix("×")
+                        .step_by(0.05),
+                );
+                changed |= slider.changed();
+                ui.small("Lower values rotate the camera more slowly. Default: 0.50×.");
+                if ui.button("Reset to default").clicked() {
+                    *settings = crate::settings::Settings::default();
+                    changed = true;
+                }
+                ui.separator();
+                ui.label("Combat is paused while settings are open.");
+                if ui.button("Close · F10 / Esc").clicked() {
+                    close = true;
+                }
+            });
+        if changed && let Err(e) = settings.save() {
+            *notice = format!("Could not save settings: {e}");
+        }
+        *settings_open = open && !close;
+    }
+    if game.phase == Phase::Shop && !*settings_open {
         let mut changed = false;
         egui::Window::new("Between waves — build workshop").collapsible(false).resizable(false).default_width(690.0).anchor(egui::Align2::CENTER_CENTER,[0.0,0.0]).show(ctx,|ui| {
             ui.heading(format!("Wave {} cleared · {} coins",game.wave,game.currency));
@@ -56,7 +92,7 @@ pub fn draw(
             *notice = e;
         }
     }
-    if *paused {
+    if *paused && !*settings_open {
         egui::Window::new("Paused")
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .collapsible(false)
@@ -67,7 +103,7 @@ pub fn draw(
                 }
             });
     }
-    if matches!(game.phase, Phase::Victory | Phase::Dead) {
+    if matches!(game.phase, Phase::Victory | Phase::Dead) && !*settings_open {
         egui::Window::new(if game.phase == Phase::Victory {
             "RUN COMPLETE"
         } else {

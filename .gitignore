@@ -4,4 +4,5 @@
 *.tmp
 /reports/**/*.jsonl
 !/reports/verified/mobile-11.jsonl
+!/reports/terrain-smoke/mobile-11.jsonl
 

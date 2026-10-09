@@ -1,9 +1,11 @@
 mod content;
 mod playtest;
 mod render;
+mod settings;
 mod shop;
 mod sim;
 mod spatial;
+mod terrain;
 #[cfg(test)]
 mod tests;
 mod ui;
@@ -27,11 +29,14 @@ struct App {
     yaw: f32,
     zoom: f32,
     paused: bool,
+    settings: settings::Settings,
+    settings_open: bool,
     focused: bool,
     last: Instant,
     notice: String,
     mouse_look_active: bool,
     bot: bool,
+    terrain_walk: bool,
     bot_input: Vec2,
     bot_frame: u32,
     frames: u32,
@@ -52,11 +57,14 @@ impl App {
             yaw: 0.4,
             zoom: 10.0,
             paused: false,
+            settings: settings::Settings::load(),
+            settings_open: false,
             focused: true,
             last: Instant::now(),
             notice: String::new(),
             mouse_look_active: false,
             bot,
+            terrain_walk: false,
             bot_input: Vec2::ZERO,
             bot_frame: 0,
             frames: 0,
@@ -69,6 +77,7 @@ impl App {
     fn mouse_look_enabled(&self) -> bool {
         self.focused
             && !self.paused
+            && !self.settings_open
             && self.game.phase == sim::Phase::Combat
             && self.window.as_ref().is_some_and(|w| {
                 let size = w.inner_size();
@@ -105,7 +114,7 @@ impl App {
         let dt = if self.bot { 1.0 / 60.0 } else { real_dt };
         let was_shop = self.game.phase == sim::Phase::Shop;
         if let Some(replay) = &mut self.replay {
-            if !self.paused {
+            if !self.paused && !self.settings_open {
                 std::mem::swap(&mut self.game, &mut replay.game);
                 let result = replay.step();
                 let finished = replay.finished();
@@ -122,7 +131,7 @@ impl App {
                     el.exit();
                 }
             }
-        } else if self.focused && !self.paused {
+        } else if self.focused && !self.paused && !self.settings_open {
             let key = |k| if self.keys.contains(&k) { 1.0 } else { 0.0 };
             if self.mouse_look_enabled() {
                 self.yaw += (key(KeyCode::KeyE) - key(KeyCode::KeyQ)) * dt * 1.8;
@@ -132,7 +141,12 @@ impl App {
                     playtest::shop_actions(&mut self.game, "mobile");
                 }
                 if self.bot_frame.is_multiple_of(9) {
-                    self.bot_input = playtest::movement(&self.game, "mobile");
+                    self.bot_input = if self.terrain_walk {
+                        // A clear diagonal route past the authored starting ruins.
+                        Vec2::new(1.0, -1.0).normalize()
+                    } else {
+                        playtest::movement(&self.game, "mobile")
+                    };
                 }
                 self.bot_frame += 1;
                 self.bot_input
@@ -184,8 +198,9 @@ impl App {
                 &mut self.game,
                 &mut self.paused,
                 &mut self.notice,
-                1.0 / real_dt.max(0.001),
-                &renderer.adapter,
+                &mut self.settings,
+                &mut self.settings_open,
+                (1.0 / real_dt.max(0.001), &renderer.adapter),
             )
         });
         self.gui
@@ -236,8 +251,14 @@ impl App {
         self.frames += 1;
         if self.limit.is_some_and(|n| self.frames >= n) {
             println!(
-                "Rendered {} frames on {}; world {:.3}s; phase {:?}",
-                self.frames, renderer.adapter, self.game.world, self.game.phase
+                "Rendered {} frames on {}; world {:.3}s; phase {:?}; position ({:.1}, {:.1}); ground {:.2}",
+                self.frames,
+                renderer.adapter,
+                self.game.world,
+                self.game.phase,
+                self.game.player.x,
+                self.game.player.y,
+                crate::terrain::height(self.game.seed, self.game.player)
             );
             el.exit();
         } else {
@@ -310,7 +331,14 @@ impl ApplicationHandler for App {
                         self.keys.insert(k);
                         if !event.repeat {
                             match k {
-                                KeyCode::Escape => self.paused = !self.paused,
+                                KeyCode::Escape => {
+                                    if self.settings_open {
+                                        self.settings_open = false;
+                                    } else {
+                                        self.paused = !self.paused;
+                                    }
+                                }
+                                KeyCode::F10 => self.settings_open = !self.settings_open,
                                 KeyCode::F5 => match sim::Game::load(std::path::Path::new(
                                     "saves/checkpoint.json",
                                 )) {
@@ -350,7 +378,8 @@ impl ApplicationHandler for App {
             && self.mouse_look_enabled()
         {
             // Relative horizontal motion orbits around world Y; never enters movement activity.
-            self.yaw = (self.yaw + dx as f32 * 0.006).rem_euclid(std::f32::consts::TAU);
+            self.yaw = (self.yaw + dx as f32 * self.settings.radians_per_pixel())
+                .rem_euclid(std::f32::consts::TAU);
         }
     }
 }
@@ -388,8 +417,13 @@ fn main() {
         .and_then(|i| args.get(i + 1))
         .and_then(|s| s.parse().ok());
     let event_loop = EventLoop::new().unwrap();
-    let mut app = App::new(args.iter().any(|a| a == "--bot"), limit);
+    let mut app = App::new(
+        args.iter().any(|a| a == "--bot" || a == "--terrain-walk"),
+        limit,
+    );
+    app.terrain_walk = args.iter().any(|a| a == "--terrain-walk");
     app.ui_smoke = args.iter().any(|a| a == "--ui-smoke");
+    app.settings_open = args.iter().any(|a| a == "--settings");
     if let Some(path) = replay_path {
         match playtest::Replay::load(std::path::Path::new(path)) {
             Ok(replay) => {

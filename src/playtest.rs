@@ -339,6 +339,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     for b in include_bytes!("../data/content.json")
                         .iter()
                         .copied()
+                        .chain(include_bytes!("../data/terrain.json").iter().copied())
                         .chain(serde_json::to_vec(&cfg.game).unwrap())
                     {
                         h = (h ^ b as u64).wrapping_mul(0x100000001b3);

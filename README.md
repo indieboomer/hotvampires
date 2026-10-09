@@ -1,5 +1,7 @@
 # Hot Vampires
 
+Current user-directed changes supersede the bounded arena/flat voxel-floor portions of the original brief: terrain is now an unbounded, seeded noise-generated triangle height field with broad flat building patches, and remains indestructible. Existing ruins occupy a flat starting clearing. Characters and destructible objects retain their placeholder voxel style. Mouse motion automatically orbits outside dialogs; camera elevation is 30 degrees. See RUNNING.md and STATUS.md for implemented behavior.
+
 SPECIFICATION / IMPLEMENTATION BRIEF FOR CODEX
 Project: colorful voxel arena survivor with movement-dependent time
 Technology: Rust + Vulkan, built from scratch
